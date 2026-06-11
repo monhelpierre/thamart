@@ -10,9 +10,14 @@ export const metadata: Metadata = {
   description: "Artesanato em miçanga – pulseiras, colares e brincos",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="pt">
+    <html lang="pt" suppressHydrationWarning>
+      <head />
       <body className={inter.className}>
         <I18nProvider>{children}</I18nProvider>
       </body>
