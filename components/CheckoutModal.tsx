@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { useI18n } from "../i18n";
-import { formatBRL } from "../data/products";
-import { buildPixPayload, makeTxid } from "../lib/pix";
+import { useI18n } from "@/lib/i18n";
+import { formatBRL } from "@/data/products";
+import { buildPixPayload, makeTxid } from "@/lib/pix";
 import {
   signInWithGoogle,
-  firebaseDemoMode,
   type AppUser,
-} from "../lib/firebase";
+} from "@/lib/firebase";
 
 interface Props {
   open: boolean;
@@ -135,11 +134,6 @@ export default function CheckoutModal({
               <GoogleIcon />
               {busy ? t("signingIn") : t("continueGoogle")}
             </button>
-            {firebaseDemoMode && (
-              <p className="mt-4 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                ⚠️ {t("demoNotice")}
-              </p>
-            )}
           </div>
         )}
 
@@ -201,11 +195,10 @@ export default function CheckoutModal({
             </div>
             <button
               onClick={handleCopy}
-              className={`mt-3 w-full rounded-xl px-4 py-2.5 font-semibold transition ${
-                copied
-                  ? "bg-emerald-500 text-white"
-                  : "bg-[#32BCAD] hover:bg-[#2AA99B] text-white"
-              }`}
+              className={`mt-3 w-full rounded-xl px-4 py-2.5 font-semibold transition ${copied
+                ? "bg-emerald-500 text-white"
+                : "bg-[#32BCAD] hover:bg-[#2AA99B] text-white"
+                }`}
             >
               {copied ? t("copied") : t("copyCode")}
             </button>

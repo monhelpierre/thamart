@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useI18n, LANGS, type Lang } from "../i18n";
-import type { AppUser } from "../lib/firebase";
-import { signOut } from "../lib/firebase";
+import { useI18n, LANGS, type Lang } from "@/lib/i18n";
+import type { AppUser } from "@/lib/firebase";
+import { logOut } from "@/lib/firebase";
 
 interface Props {
   cartCount: number;
@@ -9,6 +9,7 @@ interface Props {
   onOpenCart: () => void;
   onSignIn: () => void;
   onSignedOut: () => void;
+  authLoading?: boolean;
 }
 
 export default function Header({
@@ -17,13 +18,14 @@ export default function Header({
   onOpenCart,
   onSignIn,
   onSignedOut,
+  authLoading = false,
 }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const current = LANGS.find((l) => l.code === lang)!;
 
   const handleSignOut = async () => {
-    await signOut();
+    await logOut();
     onSignedOut();
   };
 
@@ -50,7 +52,7 @@ export default function Header({
           <a href="#about" className="hover:text-[#9B2D8F] transition">{t("navAbout")}</a>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-[160px] justify-end">
           {/* Language switcher */}
           <div className="relative">
             <button
@@ -72,14 +74,13 @@ export default function Header({
                     <button
                       key={l.code}
                       onClick={() => {
-                        setLang(l.code as Lang);
                         setLangOpen(false);
+                        setLang(l.code as Lang);
                       }}
-                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-slate-50 ${
-                        l.code === lang
-                          ? "font-bold text-[#9B2D8F] bg-[#F3E0F0]"
-                          : "text-slate-600"
-                      }`}
+                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-slate-50 ${l.code === lang
+                        ? "font-bold text-[#9B2D8F] bg-[#F3E0F0]"
+                        : "text-slate-600"
+                        }`}
                     >
                       <span>{l.flag}</span> {l.label}
                     </button>
@@ -96,30 +97,46 @@ export default function Header({
                 className="w-8 h-8 rounded-full bg-[#9B2D8F] text-white text-xs font-bold flex items-center justify-center overflow-hidden"
                 title={user.email}
               >
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  user.displayName
-                    .split(" ")
-                    .map((s) => s[0])
-                    .slice(0, 2)
-                    .join("")
-                )}
+                <img
+                  src={user?.photoURL ?? "/default-avatar.svg"}
+                  alt={user.displayName ?? t("profileDefaultAlt") ?? "Profile"}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <button
                 onClick={handleSignOut}
-                className="hidden sm:block text-xs font-semibold text-slate-400 hover:text-slate-600"
+                className="hidden sm:inline-flex items-center justify-center text-slate-400 hover:text-slate-600 p-2 rounded-lg"
+                aria-label={t("signOut")}
+                title={t("signOut")}
               >
-                {t("signOut")}
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4M21 12H7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8v8" />
+                </svg>
               </button>
             </div>
           ) : (
-            <button
-              onClick={onSignIn}
-              className="hidden sm:block rounded-lg px-3 py-1.5 text-sm font-semibold text-[#9B2D8F] hover:bg-[#F3E0F0] transition"
-            >
-              {t("signIn")}
-            </button>
+
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-8 h-8 rounded-full bg-[#9B2D8F] text-white text-xs font-bold flex items-center justify-center overflow-hidden"
+                title=""
+              >
+                <img src="/default-avatar.svg" alt={t("profileDefaultAlt") || "Profile"} className="w-full h-full object-cover" />
+              </div>
+
+              <button
+                onClick={onSignIn}
+                className="hidden sm:inline-flex items-center justify-center rounded-lg p-2 text-[#9B2D8F] hover:bg-[#F3E0F0] transition"
+                aria-label={t("signIn")}
+                title={t("signIn")}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11c1.657 0 3-1.343 3-3S17.657 5 16 5s-3 1.343-3 3 1.343 3 3 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 21v-2a4 4 0 014-4h0a4 4 0 014 4v2" />
+                </svg>
+              </button>
+            </div>
           )}
 
           {/* Cart */}

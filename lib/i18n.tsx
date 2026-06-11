@@ -1,3 +1,5 @@
+"use client";
+
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type Lang = "pt" | "fr" | "en";
@@ -90,6 +92,12 @@ const pt: Dict = {
   footerNote: "Página publicitária e de pedidos das nossas bijuterias artesanais.",
   demoNotice:
     "Modo demonstração: login do Google simulado (configure o Firebase para produção).",
+  prev: "Anterior",
+  next: "Próximo",
+  page: "Página",
+  searchPlaceholder: "Buscar por nome...",
+  minPrice: "Mín",
+  maxPrice: "Máx",
 };
 
 const fr: Dict = {
@@ -172,6 +180,12 @@ const fr: Dict = {
   footerNote: "Page publicitaire et de commande de nos bijoux artisanaux.",
   demoNotice:
     "Mode démo : connexion Google simulée (configurez Firebase pour la production).",
+  prev: "Précédent",
+  next: "Suivant",
+  page: "Page",
+  searchPlaceholder: "Chercher par nom...",
+  minPrice: "Min",
+  maxPrice: "Max",
 };
 
 const en: Dict = {
@@ -254,6 +268,12 @@ const en: Dict = {
   footerNote: "Promotional & ordering page for our handmade jewelry.",
   demoNotice:
     "Demo mode: simulated Google sign-in (configure Firebase for production).",
+  prev: "Prev",
+  next: "Next",
+  page: "Page",
+  searchPlaceholder: "Search by name...",
+  minPrice: "Min",
+  maxPrice: "Max",
 };
 
 const dicts: Record<Lang, Dict> = { pt, fr, en };

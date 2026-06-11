@@ -1,16 +1,18 @@
-import { useI18n } from "../i18n";
+import { useI18n } from "@/lib/i18n";
 import {
   PRODUCTS,
   formatBRL,
   FREE_DELIVERY_THRESHOLD,
   DELIVERY_FEE,
-} from "../data/products";
-import type { AppUser } from "../lib/firebase";
+  Product,
+} from "@/data/products";
+import type { AppUser } from "@/lib/firebase";
 
 export type CartMap = Record<string, number>;
 
 interface Props {
   open: boolean;
+  products: Product[];   // add 
   cart: CartMap;
   notes: string;
   user: AppUser | null;
@@ -20,15 +22,16 @@ interface Props {
   onCheckout: () => void;
 }
 
-export function cartSubtotal(cart: CartMap): number {
+export function cartSubtotal(cart: CartMap, products: Product[] = PRODUCTS): number {
   return Object.entries(cart).reduce((sum, [id, qty]) => {
-    const p = PRODUCTS.find((x) => x.id === id);
+    const p = products.find(x => x.id === id);
     return sum + (p ? p.price * qty : 0);
   }, 0);
 }
 
 export default function CartDrawer({
   open,
+  products,
   cart,
   notes,
   user,
@@ -39,7 +42,7 @@ export default function CartDrawer({
 }: Props) {
   const { t, lang } = useI18n();
   const items = Object.entries(cart).filter(([, q]) => q > 0);
-  const subtotal = cartSubtotal(cart);
+  const subtotal = cartSubtotal(cart, products);
   const delivery =
     subtotal === 0 || subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
   const total = subtotal + delivery;
@@ -47,15 +50,13 @@ export default function CartDrawer({
   return (
     <>
       <div
-        className={`fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm transition-opacity ${
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm transition-opacity ${open ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         onClick={onClose}
       />
       <aside
-        className={`fixed top-0 right-0 z-[65] h-full w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed top-0 right-0 z-[65] h-full w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -81,7 +82,24 @@ export default function CartDrawer({
             <>
               <ul className="space-y-3">
                 {items.map(([id, qty]) => {
-                  const p = PRODUCTS.find((x) => x.id === id)!;
+                  const p = products.find((x) => x.id === id) ?? null;
+                  if (!p) {
+                    return (
+                      <li key={id} className="flex gap-3 rounded-xl border border-slate-100 p-2.5 shadow-sm">
+                        <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">?</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-slate-800 truncate">{t("itemUnavailable") || "Item unavailable"}</p>
+                          <p className="text-xs text-slate-400">ID: {id}</p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <button onClick={() => onChangeQty(id, -1)} className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">−</button>
+                            <span className="text-sm font-semibold w-6 text-center">{qty}</span>
+                            <button onClick={() => onChangeQty(id, 1)} className="w-7 h-7 rounded-md bg-[#F3E0F0] hover:bg-[#E9CCE5] text-[#9B2D8F] font-bold">+</button>
+                          </div>
+                        </div>
+                        <p className="font-bold text-sm text-slate-800">{formatBRL(0)}</p>
+                      </li>
+                    );
+                  }
                   return (
                     <li
                       key={id}
@@ -173,6 +191,7 @@ export default function CartDrawer({
             )}
           </div>
         )}
+
       </aside>
     </>
   );

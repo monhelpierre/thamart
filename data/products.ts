@@ -1,4 +1,4 @@
-import type { Lang } from "../i18n";
+import type { Lang } from "@/lib/i18n";
 
 export interface Product {
   id: string;
@@ -26,7 +26,7 @@ export const PRODUCTS: Product[] = [
     price: 39.9,
     popular: true,
     customizable: true,
-    image: "/bracelet-flower.jpg",
+    image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187391/prod8_oadyhk.jpg",
   },
   {
     id: "bracelet-cristal",
@@ -42,7 +42,7 @@ export const PRODUCTS: Product[] = [
     },
     price: 54.9,
     popular: true,
-    image: "/bracelet-crystal.jpg",
+    image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187390/prod1_grmwt2.jpg",
   },
   {
     id: "colar",
@@ -58,7 +58,7 @@ export const PRODUCTS: Product[] = [
     },
     price: 49.9,
     customizable: true,
-    image: "/bracelet-flower.jpg",
+    image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187391/prod4_ywdo6t.jpg",
   },
   {
     id: "brincos",
@@ -73,7 +73,7 @@ export const PRODUCTS: Product[] = [
       en: "Pair of earrings with beaded mini flowers and gold hooks. Light and charming.",
     },
     price: 29.9,
-    image: "/bracelet-flower.jpg",
+    image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187391/prod6_jitovl.jpg",
   },
   {
     id: "tornozeleira",
@@ -89,7 +89,7 @@ export const PRODUCTS: Product[] = [
     },
     price: 34.9,
     customizable: true,
-    image: "/bracelet-flower.jpg",
+    image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187390/prod2_k2hgst.jpg",
   },
   {
     id: "personalizado",
@@ -105,7 +105,7 @@ export const PRODUCTS: Product[] = [
     },
     price: 44.9,
     customizable: true,
-    image: "/bracelet-flower.jpg",
+    image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187390/bracelet-crystal_e4dfvl.jpg",
   },
 ];
 
