@@ -4,7 +4,7 @@ import { PRODUCTS as defaultProducts } from "@/data/products";
 
 export async function POST() {
     try {
-        const productsRef = adminDb.collection("products");
+        const productsRef = adminDb!.collection("products");
         const snapshot = await productsRef.get();
         if (!snapshot.empty) {
             return NextResponse.json({ message: "Products already exist, skipping seed." });
