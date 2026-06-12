@@ -114,6 +114,9 @@ export const FACEBOOK_URL =
 
 export const INSTAGRAM_URL = "https://www.instagram.com/thamart";
 
+export const TERMS_URL = process.env.NEXT_PUBLIC_TERMS_URL ?? "/terms";
+export const PRIVACY_URL = process.env.NEXT_PUBLIC_PRIVACY_URL ?? "/privacy";
+
 export const FREE_DELIVERY_THRESHOLD = 120;
 export const DELIVERY_FEE = 9.9;
 

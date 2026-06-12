@@ -69,13 +69,36 @@ export function Hero() {
 
 interface MenuProps {
   products: Product[];
-  onAdd: (id: string) => void;
+  onAdd: (id: string, onAdded: () => void) => void;
+  onProductClick?: (product: Product) => void;
   isLoading?: boolean;
 }
 
-export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
+export function Menu({ products, onAdd, onProductClick, isLoading = false }: MenuProps) {
   const { t, lang } = useI18n();
   const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
+
+  useEffect(() => {
+    if (!products.length) return;
+    Promise.all(
+      products.map((p) =>
+        fetch(`/api/reviews?productId=${p.id}`)
+          .then((r) => r.json())
+          .then((reviews) => ({ id: p.id, reviews: Array.isArray(reviews) ? reviews : [] }))
+          .catch(() => ({ id: p.id, reviews: [] }))
+      )
+    ).then((results) => {
+      const map: Record<string, { avg: number; count: number }> = {};
+      results.forEach(({ id, reviews }) => {
+        if (reviews.length > 0) {
+          const avg = reviews.reduce((s: number, r: any) => s + (r.rating ?? 0), 0) / reviews.length;
+          map[id] = { avg: Math.round(avg * 10) / 10, count: reviews.length };
+        }
+      });
+      setRatings(map);
+    });
+  }, [products]);
 
   // Search & filters
   const [query, setQuery] = useState("");
@@ -87,16 +110,16 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
     return Math.max(1, ...products.map((p) => Math.floor(Number(p.price ?? 0))));
   }, [products]);
 
-  // no auto-defaults: keep min/max null until user sets them
 
   // Pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(6);
 
   const handleAdd = (id: string) => {
-    onAdd(id);
-    setJustAdded(id);
-    setTimeout(() => setJustAdded((v) => (v === id ? null : v)), 1200);
+    onAdd(id, () => {
+      setJustAdded(id);
+      setTimeout(() => setJustAdded((v) => (v === id ? null : v)), 1200);
+    });
   };
 
   // Reset page when filters/search change
@@ -130,10 +153,10 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
         <p className="text-sm font-bold uppercase tracking-widest text-[#9B2D8F]">
           📿 {t("navMenu")}
         </p>
-        <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900">
+        <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">
           {t("menuTitle")}
         </h2>
-        <p className="mt-3 text-slate-500">{t("menuSubtitle")}</p>
+        <p className="mt-3 text-slate-500 dark:text-slate-400">{t("menuSubtitle")}</p>
       </div>
 
       <div className="mt-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -143,7 +166,7 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("searchPlaceholder") || "Search by name..."}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none"
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none"
           />
         </div>
 
@@ -160,7 +183,7 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
               const v = Math.floor(Number(raw));
               setMinPrice(isNaN(v) ? null : Math.max(1, v));
             }}
-            className="w-24 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="w-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
           />
           <input
             type="number"
@@ -174,9 +197,9 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
               const v = Math.floor(Number(raw));
               setMaxPrice(isNaN(v) ? null : Math.min(maxAvailable, Math.max(1, v)));
             }}
-            className="w-24 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="w-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
           />
-          <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm">
             <option value={6}>6 / page</option>
             <option value={9}>9 / page</option>
             <option value={12}>12 / page</option>
@@ -210,9 +233,13 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
           {paginated.map((p) => (
             <article
               key={p.id}
-              className="group rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden flex flex-col"
+              className="group rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden flex flex-col"
             >
-              <div className="relative h-52 overflow-hidden bg-slate-50">
+              <div
+                className="relative h-52 overflow-hidden bg-slate-50 cursor-pointer"
+                onClick={() => onProductClick?.(p)}
+                title={t("productDetails")}
+              >
                 <img
                   src={p.image}
                   alt={p.name[lang]}
@@ -229,12 +256,30 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
                     ✏️ {t("custom")}
                   </span>
                 )}
+                {onProductClick && (
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full px-3 py-1 text-xs font-semibold text-slate-700 shadow">
+                      🔍 {t("productDetails")}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="p-5 flex flex-col flex-1">
-                <h3 className="font-bold text-lg text-slate-900">{p.name[lang]}</h3>
-                <p className="mt-1.5 text-sm text-slate-500 leading-relaxed flex-1">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white">{p.name[lang]}</h3>
+                <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed flex-1">
                   {p.description[lang]}
                 </p>
+                {ratings[p.id] ? (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="text-amber-400 text-sm">
+                      {"★".repeat(Math.round(ratings[p.id].avg))}
+                      {"☆".repeat(5 - Math.round(ratings[p.id].avg))}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {ratings[p.id].avg} ({ratings[p.id].count})
+                    </span>
+                  </div>
+                ) : null}
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-xl font-extrabold text-[#9B2D8F]">
                     {formatBRL(p.price)}
@@ -280,7 +325,6 @@ export function Menu({ products, onAdd, isLoading = false }: MenuProps) {
   );
 }
 
-/* ---------------- How it works ---------------- */
 export function HowItWorks() {
   const { t } = useI18n();
   const steps = [
@@ -290,22 +334,22 @@ export function HowItWorks() {
     { icon: "💳", title: t("step4Title"), text: t("step4Text") },
   ];
   return (
-    <section id="how" className="bg-[#FAF3F9] py-16 md:py-20">
+    <section id="how" className="bg-[#FAF3F9] dark:bg-slate-950 py-16 md:py-20">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-2xl mx-auto">
           <p className="text-sm font-bold uppercase tracking-widest text-[#9B2D8F]">
             🤝 {t("navHow")}
           </p>
-          <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900">
+          <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">
             {t("howTitle")}
           </h2>
-          <p className="mt-3 text-slate-500">{t("howSubtitle")}</p>
+          <p className="mt-3 text-slate-500 dark:text-slate-400">{t("howSubtitle")}</p>
         </div>
         <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((s, i) => (
             <div
               key={i}
-              className="relative rounded-2xl bg-white p-6 shadow-sm border border-purple-100"
+              className="relative rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm border border-purple-100 dark:border-slate-700"
             >
               <span className="absolute top-4 right-4 text-4xl font-black text-purple-100">
                 {i + 1}
@@ -313,20 +357,20 @@ export function HowItWorks() {
               <div className="w-12 h-12 rounded-xl bg-[#F3E0F0] flex items-center justify-center text-2xl">
                 {s.icon}
               </div>
-              <h3 className="mt-4 font-bold text-slate-900">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">{s.text}</p>
+              <h3 className="mt-4 font-bold text-slate-900 dark:text-white">{s.title}</h3>
+              <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{s.text}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-10 rounded-2xl bg-gradient-to-r from-[#9B2D8F] to-[#1CA8DD] p-[2px]">
-          <div className="rounded-2xl bg-white px-6 py-6 md:px-10 flex flex-col md:flex-row items-center gap-4 md:gap-8">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 px-6 py-6 md:px-10 flex flex-col md:flex-row items-center gap-4 md:gap-8">
             <span className="text-4xl">🎁</span>
             <div className="flex-1 text-center md:text-left">
-              <h3 className="font-extrabold text-lg text-slate-900">
+              <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">
                 {t("groupBannerTitle")}
               </h3>
-              <p className="text-sm text-slate-500 mt-0.5">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 {t("groupBannerText")}
               </p>
             </div>
@@ -343,7 +387,6 @@ export function HowItWorks() {
   );
 }
 
-/* ---------------- About / Facebook ---------------- */
 export function About() {
   const { t } = useI18n();
   return (
@@ -362,10 +405,10 @@ export function About() {
           <p className="text-sm font-bold uppercase tracking-widest text-[#9B2D8F]">
             💜 {t("navAbout")}
           </p>
-          <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900">
+          <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">
             {t("aboutTitle")}
           </h2>
-          <p className="mt-4 text-slate-500 leading-relaxed">{t("aboutText")}</p>
+          <p className="mt-4 text-slate-500 dark:text-slate-400 leading-relaxed">{t("aboutText")}</p>
           <a
             href={FACEBOOK_URL}
             target="_blank"
@@ -396,7 +439,6 @@ export function About() {
   );
 }
 
-/* ---------------- Footer ---------------- */
 export function Footer() {
   const { t } = useI18n();
   return (

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-
 export const runtime = "nodejs";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { NextResponse } from "next/server";
+import { DecodedIdToken } from "firebase-admin/auth";
+import { adminDb, withAuth } from "@/lib/firebaseAdmin";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: Request, decodedToken: DecodedIdToken) => {
   if (!adminDb)
     return NextResponse.json(
       { error: "admin-not-configured" },
@@ -21,12 +21,13 @@ export async function POST(req: NextRequest) {
     await ref.set(payload, { merge: true });
     return NextResponse.json({ ok: true });
   } catch (e) {
+    decodedToken
     console.error("/api/carts POST error", e);
     return NextResponse.json({ error: "server-error" }, { status: 500 });
   }
-}
+})
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: Request, decodedToken: DecodedIdToken) => {
   if (!adminDb)
     return NextResponse.json(
       { error: "admin-not-configured" },
@@ -41,7 +42,8 @@ export async function GET(req: NextRequest) {
     if (!doc.exists) return NextResponse.json({ cart: {} });
     return NextResponse.json({ cart: doc.data()?.cart ?? {} });
   } catch (e) {
+    decodedToken
     console.error("/api/carts GET error", e);
     return NextResponse.json({ error: "server-error" }, { status: 500 });
   }
-}
+})

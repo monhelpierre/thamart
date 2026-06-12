@@ -1,11 +1,11 @@
 // app/api/products/route.ts
 import { NextResponse } from "next/server";
 import { PRODUCTS } from "@/data/products";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb, withAuth } from "@/lib/firebaseAdmin";
 
-const POPULATE = true; // set to true to populate Firestore with initial products
+const POPULATE = false;
 
-export async function GET() {
+export const GET = withAuth(async () => {
     if (!adminDb) {
         return NextResponse.json({ error: "Firebase Admin not configured" }, { status: 500 });
     }
@@ -33,4 +33,4 @@ export async function GET() {
         console.error(error);
         return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
     }
-}
+})

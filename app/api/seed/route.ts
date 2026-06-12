@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
+import { adminDb, withAuth } from "@/lib/firebaseAdmin";
 import { PRODUCTS as defaultProducts } from "@/data/products";
 
-export async function POST() {
+export const POST = withAuth(async () => {
     try {
         const productsRef = adminDb!.collection("products");
         const snapshot = await productsRef.get();
@@ -18,4 +18,4 @@ export async function POST() {
         console.error(error);
         return NextResponse.json({ error: "Seeding failed" }, { status: 500 });
     }
-}
+})
