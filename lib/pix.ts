@@ -2,7 +2,7 @@
 // Produces a valid "Pix Copia e Cola" string that any Brazilian banking
 // app can read, given a real Pix key.
 
-const PIX_KEY = "pagamentos@thamart.com.br"; // troque pela sua chave Pix real
+const PIX_KEY = "thamarralouis46@gmail.com"; // troque pela sua chave Pix real
 const MERCHANT_NAME = "THAMART BIJOUX";
 const MERCHANT_CITY = "SAO PAULO";
 
