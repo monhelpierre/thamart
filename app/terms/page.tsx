@@ -44,7 +44,7 @@ export default function TermsPage() {
 
                     <section>
                         <h2 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">6. Contato</h2>
-                        <p>Dúvidas? Fale conosco pelo Instagram <a href="https://www.instagram.com/thamart" className="text-[#9B2D8F] hover:underline" target="_blank" rel="noopener noreferrer">@thamart</a>.</p>
+                        <p>Dúvidas? Fale conosco pelo Instagram <a href="https://www.instagram.com/_thamart_" className="text-[#9B2D8F] hover:underline" target="_blank" rel="noopener noreferrer">@_thamart_</a>.</p>
                     </section>
                 </div>
             </div>

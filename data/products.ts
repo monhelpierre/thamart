@@ -112,7 +112,7 @@ export const PRODUCTS: Product[] = [
 export const FACEBOOK_URL =
   "https://www.facebook.com/profile.php?id=100088311606013";
 
-export const INSTAGRAM_URL = "https://www.instagram.com/thamart";
+export const INSTAGRAM_URL = "https://www.instagram.com/_thamart_";
 
 export const TERMS_URL = process.env.NEXT_PUBLIC_TERMS_URL ?? "/terms";
 export const PRIVACY_URL = process.env.NEXT_PUBLIC_PRIVACY_URL ?? "/privacy";
