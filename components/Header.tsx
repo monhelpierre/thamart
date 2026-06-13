@@ -3,6 +3,7 @@ import { useI18n, LANGS, type Lang } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import type { AppUser } from "@/lib/firebase";
 import { logOut } from "@/lib/firebase";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 interface Props {
   cartCount: number;
@@ -25,6 +26,7 @@ export default function Header({
 }: Props) {
   const { lang, setLang, t } = useI18n();
   const { theme, toggle } = useTheme();
+  const cfg = useSiteConfig();
   const [langOpen, setLangOpen] = useState(false);
   const current = LANGS.find((l) => l.code === lang)!;
 
@@ -37,26 +39,30 @@ export default function Header({
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 shadow-sm">
       <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between gap-3">
         <a href="#top" className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9B2D8F] to-[#1CA8DD] flex items-center justify-center text-xl shadow-md shadow-purple-500/30 shrink-0">
-            📿
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-xl shadow-md shadow-purple-500/30 shrink-0 overflow-hidden">
+            {cfg.faviconUrl ? (
+              <img src={cfg.faviconUrl} alt={cfg.brandName} className="w-full h-full object-cover" />
+            ) : (
+              "📿"
+            )}
           </div>
           <div className="min-w-0 hidden xs:block sm:block">
             <p className="font-extrabold text-slate-900 dark:text-white leading-tight truncate">
-              {t("brand")}
+              {cfg.brandName || t("brand")}
             </p>
-            <p className="text-[11px] text-[#9B2D8F] font-medium leading-tight truncate">
-              {t("tagline")}
+            <p className="text-[11px] text-[var(--primary)] font-medium leading-tight truncate">
+              {cfg.tagline || t("tagline")}
             </p>
           </div>
         </a>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600 dark:text-slate-300">
-          <a href="#menu" className="hover:text-[#9B2D8F] transition">{t("navMenu")}</a>
-          <a href="#how" className="hover:text-[#9B2D8F] transition">{t("navHow")}</a>
-          <a href="#about" className="hover:text-[#9B2D8F] transition">{t("navAbout")}</a>
+          <a href="#menu" className="hover:text-[var(--primary)] transition">{t("navMenu")}</a>
+          <a href="#how" className="hover:text-[var(--primary)] transition">{t("navHow")}</a>
+          <a href="#about" className="hover:text-[var(--primary)] transition">{t("navAbout")}</a>
         </nav>
 
-        <div className="flex items-center gap-2 min-w-[160px] justify-end">
+        <div className="flex items-center gap-1 sm:gap-2 justify-end min-w-0">
           {/* Theme toggle */}
           <button
             onClick={toggle}
@@ -78,11 +84,11 @@ export default function Header({
           <div className="relative">
             <button
               onClick={() => setLangOpen((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
             >
               <span>{current.flag}</span>
-              <span className="hidden sm:inline uppercase">{current.code}</span>
-              <span className="text-[10px] text-slate-400">▼</span>
+              <span className="hidden sm:inline uppercase text-xs">{current.code}</span>
+              <span className="hidden sm:inline text-[10px] text-slate-400">▼</span>
             </button>
             {langOpen && (
               <>
@@ -99,7 +105,7 @@ export default function Header({
                         setLang(l.code as Lang);
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700 ${l.code === lang
-                        ? "font-bold text-[#9B2D8F] bg-[#F3E0F0] dark:bg-[#9B2D8F]/20"
+                        ? "font-bold text-[var(--primary)] bg-[#F3E0F0] dark:bg-[var(--primary)]/20"
                         : "text-slate-600 dark:text-slate-300"
                         }`}
                     >
@@ -113,46 +119,46 @@ export default function Header({
 
           {/* Auth */}
           {user ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <div
-                className="w-8 h-8 rounded-full bg-[#9B2D8F] text-white text-xs font-bold flex items-center justify-center overflow-hidden"
+                className="w-8 h-8 rounded-full bg-[var(--primary)] text-white text-xs font-bold flex items-center justify-center overflow-hidden shrink-0"
                 title={user.email}
               >
                 <img
                   src={user?.photoURL ?? "/default-avatar.svg"}
                   alt={user.displayName ?? t("profileDefaultAlt") ?? "Profile"}
                   className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
                 />
               </div>
               <button
                 onClick={handleSignOut}
-                className="hidden sm:inline-flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-2 rounded-lg transition"
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                 aria-label={t("signOut")}
                 title={t("signOut")}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4M21 12H7" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8v8" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <div
-                className="w-8 h-8 rounded-full bg-[#9B2D8F] text-white text-xs font-bold flex items-center justify-center overflow-hidden"
-                title=""
+                className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 flex items-center justify-center overflow-hidden shrink-0"
               >
-                <img src="/default-avatar.svg" alt={t("profileDefaultAlt") || "Profile"} className="w-full h-full object-cover" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+                </svg>
               </div>
               <button
                 onClick={onSignIn}
-                className="hidden sm:inline-flex items-center justify-center rounded-lg p-2 text-[#9B2D8F] hover:bg-[#F3E0F0] dark:hover:bg-[#9B2D8F]/20 transition"
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-[var(--primary)] hover:bg-[#F3E0F0] dark:hover:bg-[var(--primary)]/20 transition"
                 aria-label={t("signIn")}
                 title={t("signIn")}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11c1.657 0 3-1.343 3-3S17.657 5 16 5s-3 1.343-3 3 1.343 3 3 3z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 21v-2a4 4 0 014-4h0a4 4 0 014 4v2" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
               </button>
             </div>
@@ -162,7 +168,7 @@ export default function Header({
           {user && onOpenOrders && (
             <button
               onClick={onOpenOrders}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 px-2.5 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
               title={t("myOrders")}
             >
               📦 <span className="hidden md:inline">{t("myOrders")}</span>
@@ -172,11 +178,11 @@ export default function Header({
           {/* Cart */}
           <button
             onClick={onOpenCart}
-            className="relative rounded-xl bg-[#9B2D8F] hover:bg-[#7A2270] px-3.5 py-2 text-sm font-bold text-white transition shadow-md shadow-purple-500/25"
+            className="relative rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-dark)] px-2.5 sm:px-3.5 py-2 text-sm font-bold text-white transition shadow-md shadow-purple-500/25"
           >
             🛒 <span className="hidden sm:inline">{t("cart")}</span>
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-[#F3425F] text-[11px] font-bold text-white flex items-center justify-center shadow">
+              <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-[var(--accent)] text-[11px] font-bold text-white flex items-center justify-center shadow">
                 {cartCount}
               </span>
             )}

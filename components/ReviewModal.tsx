@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { auth } from "@/lib/firebase";
+import { getAuthToken } from "@/lib/firebase";
 import type { AppUser } from "@/lib/firebase";
 
 interface Props {
@@ -31,7 +31,8 @@ export default function ReviewModal({ open, user, orderId, productId, productNam
         setSubmitting(true);
         setError("");
         try {
-            const idToken = await auth.currentUser?.getIdToken();
+            const idToken = await getAuthToken();
+            if (!idToken) return;
             const res = await fetch("/api/reviews", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
@@ -60,7 +61,7 @@ export default function ReviewModal({ open, user, orderId, productId, productNam
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={handleClose} />
             <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
-                <div className="h-1.5 bg-gradient-to-r from-[#9B2D8F] via-[#1CA8DD] to-[#9B2D8F]" />
+                <div className="h-1.5 bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--primary)]" />
                 <button
                     onClick={handleClose}
                     className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 text-xl flex items-center justify-center"
@@ -104,7 +105,7 @@ export default function ReviewModal({ open, user, orderId, productId, productNam
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value.slice(0, 500))}
                                 rows={3}
-                                className="mt-1.5 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F] resize-none"
+                                className="mt-1.5 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)] resize-none"
                                 placeholder="Conte como foi sua experiência..."
                             />
                             <p className="text-right text-[10px] text-slate-400 mt-0.5">{comment.length}/500</p>
@@ -117,7 +118,7 @@ export default function ReviewModal({ open, user, orderId, productId, productNam
                             disabled={rating === 0 || submitting}
                             className={`mt-4 w-full rounded-xl px-4 py-3 font-bold text-white transition ${rating === 0 || submitting
                                 ? "bg-slate-300 dark:bg-slate-600 cursor-not-allowed"
-                                : "bg-[#9B2D8F] hover:bg-[#7A2270]"
+                                : "bg-[var(--primary)] hover:bg-[var(--primary-dark)]"
                                 }`}
                         >
                             {submitting ? "..." : t("submitReview")}

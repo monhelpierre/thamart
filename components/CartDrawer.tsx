@@ -86,7 +86,7 @@ export default function CartDrawer({
                           <div className="mt-1.5 flex items-center gap-2">
                             <button onClick={() => onChangeQty(id, -1)} className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-bold">−</button>
                             <span className="text-sm font-semibold w-6 text-center dark:text-white">{qty}</span>
-                            <button onClick={() => onChangeQty(id, 1)} className="w-7 h-7 rounded-md bg-[#F3E0F0] hover:bg-[#E9CCE5] text-[#9B2D8F] font-bold">+</button>
+                            <button onClick={() => onChangeQty(id, 1)} className="w-7 h-7 rounded-md bg-[#F3E0F0] hover:bg-[#E9CCE5] text-[var(--primary)] font-bold">+</button>
                           </div>
                         </div>
                         <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{formatBRL(0)}</p>
@@ -102,7 +102,7 @@ export default function CartDrawer({
                         <div className="mt-1.5 flex items-center gap-2">
                           <button onClick={() => onChangeQty(id, -1)} className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-bold">−</button>
                           <span className="text-sm font-semibold w-6 text-center dark:text-white">{qty}</span>
-                          <button onClick={() => onChangeQty(id, 1)} className="w-7 h-7 rounded-md bg-[#F3E0F0] hover:bg-[#E9CCE5] text-[#9B2D8F] font-bold">+</button>
+                          <button onClick={() => onChangeQty(id, 1)} className="w-7 h-7 rounded-md bg-[#F3E0F0] hover:bg-[#E9CCE5] text-[var(--primary)] font-bold">+</button>
                         </div>
                       </div>
                       <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{formatBRL(p.price * qty)}</p>
@@ -121,7 +121,7 @@ export default function CartDrawer({
                   onChange={(e) => onNotes(e.target.value)}
                   placeholder={t("orderNotesPlaceholder")}
                   rows={4}
-                  className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F] resize-none"
+                  className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)] resize-none"
                 />
               </div>
             </>
@@ -141,12 +141,12 @@ export default function CartDrawer({
               </div>
               <div className="flex justify-between text-base font-extrabold text-slate-900 dark:text-white pt-1">
                 <span>{t("subtotal")}</span>
-                <span className="text-[#9B2D8F]">{formatBRL(subtotal)}</span>
+                <span className="text-[var(--primary)]">{formatBRL(subtotal)}</span>
               </div>
             </div>
             <button
               onClick={onCheckout}
-              className="mt-3 w-full rounded-xl bg-[#9B2D8F] hover:bg-[#7A2270] px-4 py-3.5 font-bold text-white transition shadow-lg shadow-purple-500/25"
+              className="mt-3 w-full rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-dark)] px-4 py-3.5 font-bold text-white transition shadow-lg shadow-purple-500/25"
             >
               {t("continuePay")} →
             </button>

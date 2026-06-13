@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { auth } from "@/lib/firebase";
+import { getAuthToken } from "@/lib/firebase";
 import { formatBRL } from "@/data/products";
 import { formatDeliveryRange } from "@/lib/shipping";
 import type { AppUser } from "@/lib/firebase";
@@ -63,7 +63,8 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
         if (!user) return;
         setLoading(true);
         try {
-            const idToken = await auth.currentUser?.getIdToken();
+            const idToken = await getAuthToken();
+            if (!idToken) return;
             const res = await fetch(`/api/orders?uid=${encodeURIComponent(user.uid)}`, {
                 headers: { Authorization: `Bearer ${idToken}` },
             });
@@ -98,7 +99,7 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative w-full max-w-lg max-h-[90vh] rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col">
-                <div className="h-1.5 bg-gradient-to-r from-[#9B2D8F] via-[#1CA8DD] to-[#9B2D8F]" />
+                <div className="h-1.5 bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--primary)]" />
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">📦 {t("myOrders")}</h2>
                     <button
@@ -144,7 +145,7 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs text-slate-400">{date}</p>
-                                        <p className="text-sm font-bold text-[#9B2D8F]">{formatBRL(order.total)}</p>
+                                        <p className="text-sm font-bold text-[var(--primary)]">{formatBRL(order.total)}</p>
                                     </div>
                                 </button>
 
@@ -159,21 +160,21 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                                     <div key={s} className="flex-1 flex flex-col items-center">
                                                         <div className="flex items-center w-full">
                                                             {i > 0 && (
-                                                                <div className={`flex-1 h-0.5 ${i <= stepIndex ? "bg-[#9B2D8F]" : "bg-slate-200 dark:bg-slate-700"}`} />
+                                                                <div className={`flex-1 h-0.5 ${i <= stepIndex ? "bg-[var(--primary)]" : "bg-slate-200 dark:bg-slate-700"}`} />
                                                             )}
                                                             <div
                                                                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${done
-                                                                    ? "bg-[#9B2D8F] border-[#9B2D8F] text-white"
+                                                                    ? "bg-[var(--primary)] border-[var(--primary)] text-white"
                                                                     : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-400"
-                                                                    } ${active ? "ring-2 ring-[#9B2D8F]/30 scale-110" : ""}`}
+                                                                    } ${active ? "ring-2 ring-[var(--primary)]/30 scale-110" : ""}`}
                                                             >
                                                                 {done ? (active ? statusIcon[s] : "✓") : i + 1}
                                                             </div>
                                                             {i < STATUS_ORDER.length - 1 && (
-                                                                <div className={`flex-1 h-0.5 ${i < stepIndex ? "bg-[#9B2D8F]" : "bg-slate-200 dark:bg-slate-700"}`} />
+                                                                <div className={`flex-1 h-0.5 ${i < stepIndex ? "bg-[var(--primary)]" : "bg-slate-200 dark:bg-slate-700"}`} />
                                                             )}
                                                         </div>
-                                                        <p className={`text-[9px] mt-1 text-center leading-tight ${active ? "font-bold text-[#9B2D8F]" : done ? "text-slate-600 dark:text-slate-300" : "text-slate-400"}`}>
+                                                        <p className={`text-[9px] mt-1 text-center leading-tight ${active ? "font-bold text-[var(--primary)]" : done ? "text-slate-600 dark:text-slate-300" : "text-slate-400"}`}>
                                                             {t(statusKey[s])}
                                                         </p>
                                                     </div>
@@ -208,7 +209,7 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                             ))}
                                             <div className="border-t border-slate-100 dark:border-slate-700 pt-1 flex justify-between text-sm font-bold text-slate-800 dark:text-slate-200">
                                                 <span>Total</span>
-                                                <span className="text-[#9B2D8F]">{formatBRL(order.total)}</span>
+                                                <span className="text-[var(--primary)]">{formatBRL(order.total)}</span>
                                             </div>
                                         </div>
 
@@ -225,7 +226,7 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                                     <button
                                                         key={idx}
                                                         onClick={() => onReview(order.id, item.productId)}
-                                                        className="w-full text-left rounded-lg bg-[#F3E0F0] dark:bg-[#9B2D8F]/20 hover:bg-[#E9CCE5] dark:hover:bg-[#9B2D8F]/30 px-3 py-2 text-sm font-semibold text-[#9B2D8F] transition"
+                                                        className="w-full text-left rounded-lg bg-[#F3E0F0] dark:bg-[var(--primary)]/20 hover:bg-[#E9CCE5] dark:hover:bg-[var(--primary)]/30 px-3 py-2 text-sm font-semibold text-[var(--primary)] transition"
                                                     >
                                                         ⭐ {item.name?.[lang as "pt" | "fr" | "en"] ?? item.name?.pt}
                                                     </button>

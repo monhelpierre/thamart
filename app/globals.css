@@ -6,6 +6,12 @@
 :root {
     --background: #ffffff;
     --foreground: #171717;
+    /* Brand colors — overridden at runtime by ConfigStyle */
+    --primary: #9B2D8F;
+    --primary-dark: #7A2270;
+    --secondary: #1CA8DD;
+    --secondary-dark: #1593C2;
+    --accent: #F3425F;
 }
 
 .dark {
@@ -21,4 +27,17 @@
 body {
     background: var(--background);
     color: var(--foreground);
+}
+
+/* Hide scrollbars globally on overflow containers in modals/drawers */
+.scrollbar-none,
+.overflow-y-auto,
+.overflow-x-auto {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+    display: none;
 }
