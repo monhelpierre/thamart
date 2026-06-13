@@ -25,6 +25,10 @@ try {
   console.error("Failed to get Firebase Admin Firestore:", e);
 }
 
+const ADMIN_EMAILS =
+  process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim()) || [];
+const ADMIN_PATHS = ["/api/orders", "/api/admin"]; // Add any admin‑only endpoints
+
 function withAuth(
   handler: (
     req: Request,
@@ -32,45 +36,54 @@ function withAuth(
   ) => Promise<Response> | Response,
 ) {
   return async function (req: Request) {
-    try {
-      if (req.method == "GET" && req.url.includes("/api/products")) {
-        return handler(req, {} as admin.auth.DecodedIdToken);
-      }
+    const url = new URL(req.url);
 
-      const idToken = req.headers.get("Authorization")?.split("Bearer ")[1];
-
-      if (!idToken || idToken === "undefined" || !idToken.includes(".")) {
-        console.error("Unauthorized: No token provided");
-        return NextResponse.json(
-          { message: "Unauthorized: No token provided" },
-          { status: 401 },
-        );
-      }
-
-      const decodedToken = await auth.verifyIdToken(idToken);
-
-      if (!decodedToken) {
-        console.error("Unauthorized: Wrong token provided");
-        return NextResponse.json(
-          { message: "Unauthorized: Wrong token provided" },
-          { status: 401 },
-        );
-      }
-
-      if (decodedToken.ok == false) {
-        console.error("Unauthorized: Wrong token provided");
-        return NextResponse.json(
-          { message: "Unauthorized: Wrong token provided" },
-          { status: 401 },
-        );
-      }
-
-      return handler(req, decodedToken);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(message);
-      return new Response(JSON.stringify({ message }), { status: 401 });
+    // 1. Public routes – no auth required
+    if (req.method === "GET" && url.pathname === "/api/products") {
+      return handler(req, {} as admin.auth.DecodedIdToken);
     }
+
+    // 2. Extract and verify ID token
+    const idToken = req.headers.get("Authorization")?.split("Bearer ")[1];
+    if (!idToken || idToken === "undefined" || !idToken.includes(".")) {
+      console.error("Unauthorized: No token provided");
+      return NextResponse.json(
+        { message: "Unauthorized: No token provided" },
+        { status: 401 },
+      );
+    }
+
+    let decodedToken: admin.auth.DecodedIdToken;
+    try {
+      decodedToken = await auth.verifyIdToken(idToken);
+    } catch (error) {
+      console.error("Token verification failed:", error);
+      return NextResponse.json(
+        { message: "Unauthorized: Invalid token" },
+        { status: 401 },
+      );
+    }
+
+    // 3. Check if the requested path requires admin access
+    const requiresAdmin = ADMIN_PATHS.some((path) =>
+      url.pathname.startsWith(path),
+    );
+
+    if (requiresAdmin) {
+      const isAdminByClaim = decodedToken.admin === true;
+      const isAdminByEmail = ADMIN_EMAILS.includes(decodedToken.email || "");
+
+      if (!isAdminByClaim && !isAdminByEmail) {
+        console.error(`Forbidden: User ${decodedToken.email} is not an admin`);
+        return NextResponse.json(
+          { message: "Forbidden: Admin access required" },
+          { status: 403 },
+        );
+      }
+    }
+
+    // 4. All checks passed – proceed to handler
+    return handler(req, decodedToken);
   };
 }
 
