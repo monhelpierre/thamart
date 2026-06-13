@@ -13,7 +13,7 @@ export const LANGS: { code: Lang; label: string; flag: string }[] = [
 type Dict = Record<string, string>;
 
 const pt: Dict = {
-  brand: "ThamArt bijoux",
+  brand: "ThamArt Bijoux",
   tagline: "Bijuterias artesanais em miçanga",
   navMenu: "Produtos",
   navHow: "Como funciona",
@@ -43,12 +43,13 @@ const pt: Dict = {
   step2Text:
     "Escreva as instruções: cores, tamanho do pulso, nome para personalizar e observações.",
   step3Title: "Entre com o Google",
-  step3Text: "Conecte sua conta Google para confirmar quem está fazendo o pedido.",
+  step3Text:
+    "Conecte sua conta Google para confirmar quem está fazendo o pedido.",
   step4Title: "Pague com Pix",
   step4Text: "Escaneie o QR Code ou copie o código Pix. Confirmação na hora!",
   aboutTitle: "Sobre a ThamArt",
   aboutText:
-    "A ThamArt bijoux nasceu do amor pelo artesanato em miçanga. Cada pulseira, colar e brinco é feito à mão, peça por peça, com cuidado e atenção aos detalhes. Acompanhe nossa página no Facebook para ver as novidades, cores disponíveis e encomendas especiais.",
+    "A ThamArt Bijoux nasceu do amor pelo artesanato em miçanga. Cada pulseira, colar e brinco é feito à mão, peça por peça, com cuidado e atenção aos detalhes. Acompanhe nossa página no Facebook para ver as novidades, cores disponíveis e encomendas especiais.",
   followFacebook: "Seguir no Facebook",
   followInstagram: "Seguir no Instagram",
   cart: "Carrinho",
@@ -58,7 +59,8 @@ const pt: Dict = {
   orderNotesLabel: "Instruções do pedido",
   orderNotesPlaceholder:
     "Ex.: Pulseira de florzinha na cor rosa, tamanho 17cm. Pulseira personalizada com o nome 'Ana'. Entregar na Rua das Flores 123. Embalar para presente...",
-  orderNotesHint: "Descreva cores, tamanhos, nomes para personalizar e endereço.",
+  orderNotesHint:
+    "Descreva cores, tamanhos, nomes para personalizar e endereço.",
   subtotal: "Subtotal",
   deliveryFee: "Entrega",
   free: "Grátis",
@@ -93,7 +95,8 @@ const pt: Dict = {
   groupBannerText:
     "Pedidos acima de R$ 120 têm entrega grátis. Junte suas peças favoritas e pague com Pix!",
   footerRights: "Todos os direitos reservados.",
-  footerNote: "Página publicitária e de pedidos das nossas bijuterias artesanais.",
+  footerNote:
+    "Página publicitária e de pedidos das nossas bijuterias artesanais.",
   demoNotice:
     "Modo demonstração: login do Google simulado (configure o Firebase para produção).",
   prev: "Anterior",
@@ -152,7 +155,8 @@ const pt: Dict = {
   saveAsDefault: "Salvar como endereço padrão",
   // Address prompt modal
   addYourAddress: "Adicione seu endereço",
-  addressPromptText: "Salve seu endereço de entrega para agilizar futuras compras!",
+  addressPromptText:
+    "Salve seu endereço de entrega para agilizar futuras compras!",
   skipForNow: "Agora não",
   saveAddress: "Salvar endereço",
   // Product modal
@@ -161,13 +165,13 @@ const pt: Dict = {
 };
 
 const fr: Dict = {
-  brand: "ThamArt bijoux",
+  brand: "ThamArt Bijoux",
   tagline: "Bijoux artisanaux en perles",
   navMenu: "Produits",
   navHow: "Comment ça marche",
   navAbout: "À propos",
   navContact: "Contact",
-  heroBadge: "Fait main • Paiement par Pix",
+  heroBadge: "Fait à la main • Paiement par Pix",
   heroTitle: "Bijoux artisanaux avec mini fleurs en perles",
   heroSubtitle:
     "Bracelets, colliers et boucles d'oreilles faits main, pièce par pièce, avec beaucoup d'amour. Composez votre commande, personnalisez et payez par Pix.",
@@ -191,12 +195,14 @@ const fr: Dict = {
   step2Text:
     "Écrivez les instructions : couleurs, tour de poignet, prénom à personnaliser et remarques.",
   step3Title: "Connectez-vous avec Google",
-  step3Text: "Connectez votre compte Google pour confirmer qui passe la commande.",
+  step3Text:
+    "Connectez votre compte Google pour confirmer qui passe la commande.",
   step4Title: "Payez par Pix",
-  step4Text: "Scannez le QR Code ou copiez le code Pix. Confirmation immédiate !",
+  step4Text:
+    "Scannez le QR Code ou copiez le code Pix. Confirmation immédiate !",
   aboutTitle: "À propos de ThamArt",
   aboutText:
-    "ThamArt bijoux est né de l'amour de l'artisanat en perles. Chaque bracelet, collier et boucle d'oreille est fait main, pièce par pièce, avec soin et attention aux détails. Suivez notre page Facebook pour découvrir les nouveautés, les couleurs disponibles et les commandes spéciales.",
+    "ThamArt Bijoux est né de l'amour de l'artisanat en perles. Chaque bracelet, collier et boucle d'oreille est fait main, pièce par pièce, avec soin et attention aux détails. Suivez notre page Facebook pour découvrir les nouveautés, les couleurs disponibles et les commandes spéciales.",
   followFacebook: "Suivre sur Facebook",
   followInstagram: "Suivre sur Instagram",
   cart: "Panier",
@@ -206,7 +212,8 @@ const fr: Dict = {
   orderNotesLabel: "Instructions de la commande",
   orderNotesPlaceholder:
     "Ex. : Bracelet à fleurs en rose, taille 17cm. Bracelet personnalisé avec le prénom 'Ana'. Livrer au 123 Rue des Fleurs. Emballer en cadeau...",
-  orderNotesHint: "Décrivez couleurs, tailles, prénoms à personnaliser et adresse.",
+  orderNotesHint:
+    "Décrivez couleurs, tailles, prénoms à personnaliser et adresse.",
   subtotal: "Sous-total",
   deliveryFee: "Livraison",
   free: "Gratuit",
@@ -231,7 +238,8 @@ const fr: Dict = {
   orCopy: "ou utilisez le Pix Copier-Coller",
   copyCode: "Copier le code Pix",
   copied: "Code copié ! ✓",
-  afterPay: "Après le paiement, appuyez sur le bouton ci-dessous pour confirmer.",
+  afterPay:
+    "Après le paiement, appuyez sur le bouton ci-dessous pour confirmer.",
   confirmPaid: "J'ai payé",
   successTitle: "Commande reçue ! 🎉",
   successText:
@@ -298,7 +306,8 @@ const fr: Dict = {
   newAddress: "Nouvelle adresse",
   saveAsDefault: "Enregistrer comme adresse par défaut",
   addYourAddress: "Ajoutez votre adresse",
-  addressPromptText: "Enregistrez votre adresse de livraison pour faciliter vos prochains achats !",
+  addressPromptText:
+    "Enregistrez votre adresse de livraison pour faciliter vos prochains achats !",
   skipForNow: "Pas maintenant",
   saveAddress: "Enregistrer l'adresse",
   productDetails: "Détails du produit",
@@ -306,7 +315,7 @@ const fr: Dict = {
 };
 
 const en: Dict = {
-  brand: "ThamArt bijoux",
+  brand: "ThamArt Bijoux",
   tagline: "Handmade beaded jewelry",
   navMenu: "Products",
   navHow: "How it works",
@@ -341,7 +350,7 @@ const en: Dict = {
   step4Text: "Scan the QR Code or copy the Pix code. Instant confirmation!",
   aboutTitle: "About ThamArt",
   aboutText:
-    "ThamArt bijoux was born from a love of beadwork. Every bracelet, necklace and pair of earrings is made by hand, piece by piece, with care and attention to detail. Follow our Facebook page to see new arrivals, available colors and special orders.",
+    "ThamArt Bijoux was born from a love of beadwork. Every bracelet, necklace and pair of earrings is made by hand, piece by piece, with care and attention to detail. Follow our Facebook page to see new arrivals, available colors and special orders.",
   followFacebook: "Follow on Facebook",
   followInstagram: "Follow on Instagram",
   cart: "Cart",
@@ -460,7 +469,7 @@ interface I18nCtx {
 
 const Ctx = createContext<I18nCtx>({
   lang: "pt",
-  setLang: () => { },
+  setLang: () => {},
   t: (k) => k,
 });
 

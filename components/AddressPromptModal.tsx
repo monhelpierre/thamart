@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
-import { auth } from "@/lib/firebase";
+import { getAuthToken } from "@/lib/firebase";
 import { lookupCep } from "@/lib/shipping";
 import type { AppUser } from "@/lib/firebase";
 
@@ -62,7 +62,8 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
         }
         setSaving(true);
         try {
-            const idToken = await auth.currentUser?.getIdToken();
+            const idToken = await getAuthToken();
+            if (!idToken) return;
             await fetch("/api/users", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
@@ -80,7 +81,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
         <div className="fixed inset-0 z-[72] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onSkip} />
             <div className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
-                <div className="h-1.5 bg-gradient-to-r from-[#9B2D8F] via-[#1CA8DD] to-[#9B2D8F]" />
+                <div className="h-1.5 bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--primary)]" />
                 <button
                     onClick={onSkip}
                     className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 flex items-center justify-center text-lg z-10"
@@ -90,7 +91,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     <div className="text-center">
-                        <div className="mx-auto w-14 h-14 rounded-2xl bg-[#F3E0F0] dark:bg-[#9B2D8F]/20 flex items-center justify-center text-3xl mb-3">
+                        <div className="mx-auto w-14 h-14 rounded-2xl bg-[#F3E0F0] dark:bg-[var(--primary)]/20 flex items-center justify-center text-3xl mb-3">
                             📍
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t("addYourAddress")}</h3>
@@ -106,7 +107,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
                                 onChange={(e) => handleCepChange(e.target.value)}
                                 placeholder={t("cepPlaceholder")}
                                 maxLength={9}
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F]"
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)]"
                             />
                             {cepLoading && (
                                 <span className="absolute right-3 top-2.5 text-xs text-slate-400 animate-pulse">{t("cepLoading")}</span>
@@ -124,7 +125,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
                                         type="text"
                                         value={address.street}
                                         onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
-                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F]"
+                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)]"
                                     />
                                 </div>
                                 <div>
@@ -134,7 +135,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
                                         value={address.number}
                                         onChange={(e) => setAddress((a) => ({ ...a, number: e.target.value }))}
                                         placeholder="123"
-                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F]"
+                                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)]"
                                     />
                                 </div>
                             </div>
@@ -146,7 +147,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
                                     value={address.complement}
                                     onChange={(e) => setAddress((a) => ({ ...a, complement: e.target.value }))}
                                     placeholder="Apto, bloco..."
-                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F]"
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 focus:border-[var(--primary)]"
                                 />
                             </div>
 
@@ -161,7 +162,7 @@ export default function AddressPromptModal({ open, user, onSaved, onSkip }: Prop
                     <button
                         onClick={handleSave}
                         disabled={saving || cepLoading || !address.city}
-                        className="w-full rounded-xl bg-[#9B2D8F] hover:bg-[#7A2270] px-4 py-3 font-bold text-white transition disabled:opacity-50"
+                        className="w-full rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-dark)] px-4 py-3 font-bold text-white transition disabled:opacity-50"
                     >
                         {saving ? "Salvando..." : t("saveAddress")}
                     </button>

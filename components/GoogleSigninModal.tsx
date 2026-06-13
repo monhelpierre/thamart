@@ -45,7 +45,7 @@ export default function GoogleSigninModal({ open, onUser, onClose }: Props) {
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
-                <div className="h-1.5 bg-gradient-to-r from-[#9B2D8F] via-[#1CA8DD] to-[#9B2D8F]" />
+                <div className="h-1.5 bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--primary)]" />
                 <button
                     onClick={onClose}
                     className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 flex items-center justify-center text-lg"
@@ -55,7 +55,7 @@ export default function GoogleSigninModal({ open, onUser, onClose }: Props) {
                 </button>
 
                 <div className="p-8 text-center">
-                    <div className="mx-auto w-16 h-16 rounded-2xl bg-[#F3E0F0] dark:bg-[#9B2D8F]/20 flex items-center justify-center text-3xl mb-4">
+                    <div className="mx-auto w-16 h-16 rounded-2xl bg-[#F3E0F0] dark:bg-[var(--primary)]/20 flex items-center justify-center text-3xl mb-4">
                         🔐
                     </div>
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">{t("loginTitle")}</h3>
@@ -72,7 +72,7 @@ export default function GoogleSigninModal({ open, onUser, onClose }: Props) {
                     <p className="mt-4 text-center text-[11px] text-slate-400 leading-relaxed px-2">
                         {t("termsNotice")}{" "}
                         {TERMS_URL ? (
-                            <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline text-[#9B2D8F] hover:text-[#7A2270] transition">
+                            <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline text-[var(--primary)] hover:text-[var(--primary-dark)] transition">
                                 {t("termsLink")}
                             </a>
                         ) : (
@@ -80,7 +80,7 @@ export default function GoogleSigninModal({ open, onUser, onClose }: Props) {
                         )}{" "}
                         {t("andWord")}{" "}
                         {PRIVACY_URL ? (
-                            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline text-[#9B2D8F] hover:text-[#7A2270] transition">
+                            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline text-[var(--primary)] hover:text-[var(--primary-dark)] transition">
                                 {t("privacyLink")}
                             </a>
                         ) : (

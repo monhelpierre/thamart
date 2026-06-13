@@ -40,5 +40,10 @@ function subscribeAuth(cb: (user: AppUser | null) => void): () => void {
   return onAuthStateChanged(auth, (u) => cb(u ? toAppUser(u) : null));
 }
 
-export { auth, db, signInWithGoogle, subscribeAuth, logOut, logOut as signOut };
+async function getAuthToken(): Promise<string | null> {
+  const token = await auth.currentUser?.getIdToken();
+  return token ?? null;
+}
+
+export { auth, db, signInWithGoogle, subscribeAuth, logOut, logOut as signOut, getAuthToken };
 export type { AppUser };
