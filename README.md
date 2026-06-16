@@ -37,18 +37,26 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and fill the Firebase values before running locally. The app requires both client-side Firebase keys (NEXT_PUBLIC_*) and a server-side `FIREBASE_SERVICE_ACCOUNT` JSON string for admin APIs.
-
-Example:
+Copy `.env.example` to `.env.local` and fill the following values before running locally:
 
 ```bash
 cp .env.example .env.local
-# edit .env.local and paste your Firebase config
+# edit .env.local and set:
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+FIREBASE_SERVICE_ACCOUNT='{ private_key: "<escaped>\n..." }'
+RESEND_API_KEY=your_resend_api_key_here
+EMAIL_FROM="ThamArt Bijoux <noreply@thamart.com.br>"
+# Optional site config overrides (API-driven):
+# SITE_CONFIG_API_URL=/api/admin/config
+# or edit siteConfigShared.DEFAULT_CONFIG directly
 ```
 
 Notes:
-- `FIREBASE_SERVICE_ACCOUNT` must be a valid service account JSON encoded as a single line (newlines in the private key escaped as `\n`).
-- If you don't set `FIREBASE_SERVICE_ACCOUNT`, some server routes (seed, users, carts) will return an error.
+- `FIREBASE_SERVICE_ACCOUNT` must be JSON-encoded on one line.
+- `RESEND_API_KEY` is required to send emails via Resend.com.
+- `EMAIL_FROM` defaults to ThamArt Bijoux if unset.
 
 ## Local Setup
 
@@ -62,3 +70,23 @@ npm run dev
 Seed the database (if needed) by visiting `/api/seed` while the server is running — the API will populate Firestore with initial products if empty.
 
 If you want me to add deployment instructions for Vercel / Docker, say so and I will expand this section.
+
+## Project Structure & Functionality
+
+- `app/`
+  - Contains Next.js App Router files: page.tsx, layout.tsx for the root layout and pages.
+  - `app/api/`: Server API routes (seed products, list products, manage users and carts). Each route exports HTTP handlers.
+- `components/`
+  - Reusable React components: `Header`, `Footer`, `CartDrawer`, modals (checkout, product, review, order tracker, address prompt, Google sign-in), and Sections grouping UI like `Hero`, `Menu`, `HowItWorks`, `About`.
+- `data/`
+  - Static product definitions (`/data/products.ts`) used for seeding Firestore and rendering the menu.
+- `lib/`
+  - `firebase.ts` and `firebaseAdmin.ts`: Client and Admin Firebase initialization and helpers.
+  - `email.ts`: Resend.com email sender functions.
+  - `i18n.tsx`: Internationalization provider and hooks.
+  - `siteConfig.tsx` + `siteConfigShared.ts`: Runtime site configuration provider and defaults.
+- `public/`
+  - Static assets: images, favicon, fonts.
+- `next.config.js`, `tsconfig.json`, `postcss.config.mjs`, and `eslint.config.mjs`: Build, lint, and styling configurations.
+
+Each module is designed to separate concerns: data, presentation, internationalization, API integration, and styling configurations. This structure helps maintain and extend the application consistently.
