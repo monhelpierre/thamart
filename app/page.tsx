@@ -10,7 +10,10 @@ import AddressPromptModal from "@/components/AddressPromptModal";
 import { subscribeAuth, getAuthToken, type AppUser } from "@/lib/firebase";
 import GoogleSigninModal from "@/components/GoogleSigninModal";
 import { Hero, Menu, HowItWorks, About, Footer } from "@/components/Sections";
-import CartDrawer, { cartSubtotal, type CartMap } from "@/components/CartDrawer";
+import CartDrawer, {
+  cartSubtotal,
+  type CartMap,
+} from "@/components/CartDrawer";
 import { type Product } from "@/data/products";
 
 export default function Home() {
@@ -37,6 +40,11 @@ export default function Home() {
 
   // Product modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Track active bottom nav tab
+  const [activeTab, setActiveTab] = useState<
+    "home" | "menu" | "orders" | "cart"
+  >("home");
 
   // Address prompt (shown once after login if no saved address)
   const [addressPromptOpen, setAddressPromptOpen] = useState(false);
@@ -88,7 +96,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!user) {
-      try { localStorage.removeItem("session"); } catch { }
+      try {
+        localStorage.removeItem("session");
+      } catch {}
       return;
     }
 
@@ -104,15 +114,26 @@ export default function Home() {
         if (!idToken) return;
         await fetch("/api/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ uid: user.uid, displayName: user.displayName, email: user.email, photoURL: user.photoURL }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+          }),
         });
 
         // Check if address prompt should be shown (only once per session)
         if (!sessionStorage.getItem("addressPromptShown")) {
-          const profileRes = await fetch(`/api/users?uid=${encodeURIComponent(user.uid)}`, {
-            headers: { Authorization: `Bearer ${idToken}` },
-          });
+          const profileRes = await fetch(
+            `/api/users?uid=${encodeURIComponent(user.uid)}`,
+            {
+              headers: { Authorization: `Bearer ${idToken}` },
+            },
+          );
           if (profileRes.ok) {
             const profile = await profileRes.json();
             if (!profile?.defaultAddress?.city) {
@@ -133,9 +154,12 @@ export default function Home() {
       try {
         const idToken = await getAuthToken();
         if (!idToken) return;
-        const res = await fetch(`/api/carts?uid=${encodeURIComponent(user.uid)}`, {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
+        const res = await fetch(
+          `/api/carts?uid=${encodeURIComponent(user.uid)}`,
+          {
+            headers: { Authorization: `Bearer ${idToken}` },
+          },
+        );
         const json = await res.json();
         if (json && json.cart) {
           const local = localStorage.getItem("cart");
@@ -166,7 +190,10 @@ export default function Home() {
         if (!idToken) return;
         await fetch("/api/carts", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
           body: JSON.stringify({ uid: user.uid, cart }),
         });
       } catch (e) {
@@ -175,8 +202,14 @@ export default function Home() {
     })();
   }, [cart, user]);
 
-  const cartCount = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
-  const subtotal = useMemo(() => cartSubtotal(cart, products), [cart, products]);
+  const cartCount = useMemo(
+    () => Object.values(cart).reduce((a, b) => a + b, 0),
+    [cart],
+  );
+  const subtotal = useMemo(
+    () => cartSubtotal(cart, products),
+    [cart, products],
+  );
 
   const addToCart = (id: string, onAdded: () => void) => {
     if (!user) {
@@ -184,12 +217,12 @@ export default function Home() {
       setPendingAdd(id);
       return;
     }
-    setCart(c => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+    setCart((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
     onAdded();
   };
 
   const changeQty = (id: string, delta: number) =>
-    setCart(c => {
+    setCart((c) => {
       const next = Math.max(0, (c[id] ?? 0) + delta);
       const copy = { ...c };
       if (next === 0) delete copy[id];
@@ -231,7 +264,9 @@ export default function Home() {
     try {
       localStorage.removeItem("cart");
       localStorage.removeItem("session");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
@@ -239,7 +274,9 @@ export default function Home() {
       {/* Full-page loading overlay — same style as cart backdrop */}
       <div
         className={`fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center ${
-          isLoading ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          isLoading
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
       >
         <div className="w-12 h-12 rounded-full border-4 border-white/30 border-t-white animate-spin" />
@@ -249,7 +286,10 @@ export default function Home() {
         cartCount={cartCount}
         user={user}
         onOpenCart={() => setCartOpen(true)}
-        onOpenOrders={() => { setHighlightOrderId(null); setOrdersOpen(true); }}
+        onOpenOrders={() => {
+          setHighlightOrderId(null);
+          setOrdersOpen(true);
+        }}
         onSignIn={() => setGoogleSigninOpen(true)}
         onSignedOut={handleSignedOut}
         authLoading={authLoading}
@@ -271,32 +311,99 @@ export default function Home() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-[55] bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-100 dark:border-slate-800 flex items-center justify-around px-2 py-2 safe-area-pb">
-        <a href="#top" className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-slate-400 dark:text-slate-500 hover:text-[var(--primary)] transition">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        <a
+          href="#top"
+          onClick={() => setActiveTab("home")}
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${activeTab === "home" ? "text-[var(--primary)]" : "text-slate-400 dark:text-slate-500 hover:text-[var(--primary)]"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
           </svg>
           <span className="text-[9px] font-semibold">Início</span>
         </a>
-        <a href="#menu" className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-slate-400 dark:text-slate-500 hover:text-[var(--primary)] transition">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        <a
+          href="#menu"
+          onClick={() => setActiveTab("menu")}
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${activeTab === "menu" ? "text-[var(--primary)]" : "text-slate-400 dark:text-slate-500 hover:text-[var(--primary)]"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 10h16M4 14h16M4 18h16"
+            />
           </svg>
           <span className="text-[9px] font-semibold">Catálogo</span>
         </a>
         {user && (
-          <button onClick={() => { setHighlightOrderId(null); setOrdersOpen(true); }} className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-slate-400 dark:text-slate-500 hover:text-[var(--primary)] transition">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          <button
+            onClick={() => {
+              setHighlightOrderId(null);
+              setOrdersOpen(true);
+              setActiveTab("orders");
+            }}
+            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${activeTab === "orders" ? "text-[var(--primary)]" : "text-slate-400 dark:text-slate-500 hover:text-[var(--primary)]"}`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
             </svg>
             <span className="text-[9px] font-semibold">Pedidos</span>
           </button>
         )}
-        <button onClick={() => setCartOpen(true)} className="relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[var(--primary)] hover:text-[var(--primary-dark)] transition">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        <button
+          onClick={() => {
+            setCartOpen(true);
+            setActiveTab("cart");
+          }}
+          className={`relative flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${activeTab === "cart" ? "text-[var(--primary)]" : "text-slate-400 dark:text-slate-500 hover:text-[var(--primary)]"}`}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+            />
           </svg>
           {cartCount > 0 && (
-            <span className="absolute top-0 right-1 min-w-4 h-4 px-0.5 rounded-full bg-[var(--accent)] text-[9px] font-bold text-white flex items-center justify-center">{cartCount}</span>
+            <span className="absolute top-0 right-1 min-w-4 h-4 px-0.5 rounded-full bg-[var(--accent)] text-[9px] font-bold text-white flex items-center justify-center">
+              {cartCount}
+            </span>
           )}
           <span className="text-[9px] font-semibold">Carrinho</span>
         </button>
@@ -311,7 +418,10 @@ export default function Home() {
         notes={notes}
         user={user}
         onNotes={setNotes}
-        onClose={() => setCartOpen(false)}
+        onClose={() => {
+          setCartOpen(false);
+          setActiveTab("home");
+        }}
         onChangeQty={changeQty}
         onCheckout={handleCheckout}
         products={products}
@@ -332,7 +442,10 @@ export default function Home() {
         open={ordersOpen}
         user={user}
         highlightOrderId={highlightOrderId}
-        onClose={() => setOrdersOpen(false)}
+        onClose={() => {
+          setOrdersOpen(false);
+          setActiveTab("home");
+        }}
         onReview={handleReview}
       />
 
@@ -365,7 +478,7 @@ export default function Home() {
         onUser={(u) => {
           setUser(u);
           if (pendingAdd) {
-            setCart(c => ({ ...c, [pendingAdd]: (c[pendingAdd] ?? 0) + 1 }));
+            setCart((c) => ({ ...c, [pendingAdd]: (c[pendingAdd] ?? 0) + 1 }));
             setPendingAdd(null);
           }
         }}
