@@ -31,10 +31,16 @@ function detectMedia(src: string, type: "image" | "video" = "image") {
   return { kind: "image" as const, id: null };
 }
 
+const SLIDE_TRANSITION_MS = 850; // must match CSS animation duration
+
 function HeroSlideshow() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
+  const [prev, setPrev] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const busyRef = useRef(false);
+  const hasRemaining = remaining !== null;
 
   useEffect(() => {
     fetch("/api/slides")
@@ -43,43 +49,79 @@ function HeroSlideshow() {
       .catch(() => {});
   }, []);
 
+  // Transition cleanup: when a transition starts (prev → non-null), reset after animation
   useEffect(() => {
-    if (slides.length <= 1 || paused) return;
-    const slide = slides[current];
-    const duration = slide?.type === "video" ? (slide.duration ?? 20) * 1000 : 5000;
-    const t = setTimeout(() => setCurrent((c) => (c + 1) % slides.length), duration);
+    if (prev === null) return;
+    const t = setTimeout(() => { setPrev(null); busyRef.current = false; }, SLIDE_TRANSITION_MS);
     return () => clearTimeout(t);
-  }, [slides.length, paused, current]);
+  }, [prev]);
 
-  const slide = slides[current];
+  // Auto-advance: only runs when NOT in a transition, so each slide gets its full duration
+  useEffect(() => {
+    if (prev !== null || slides.length <= 1 || paused) return;
+    const s = slides[current];
+    const duration = s?.type === "video" ? (s.duration ?? 20) * 1000 : 5000;
+    const t = setTimeout(() => {
+      if (busyRef.current) return;
+      busyRef.current = true;
+      const next = (current + 1) % slides.length;
+      setPrev(current);
+      setCurrent(next);
+    }, duration);
+    return () => clearTimeout(t);
+  }, [prev, slides.length, paused, current]);
 
-  function renderMedia() {
-    if (!slide) {
-      return (
-        <img
-          src="/bracelet-flower.jpg"
-          alt="ThamArt beaded bracelets"
-          className="w-full h-full object-cover"
-        />
-      );
+  // Reset countdown when the active slide changes
+  useEffect(() => {
+    const s = slides[current];
+    if (!s) { setRemaining(null); return; }
+    const media = detectMedia(s.src, s.type);
+    setRemaining(media.kind !== "image" ? (s.duration ?? 20) : null);
+  }, [current, slides]);
+
+  // Countdown tick — paused during transitions and when paused by hover
+  useEffect(() => {
+    if (!hasRemaining || paused || prev !== null) return;
+    const t = setInterval(() => setRemaining((r) => (r !== null && r > 0 ? r - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [hasRemaining, paused, prev]);
+
+  function goTo(idx: number) {
+    if (busyRef.current || idx === current || slides.length <= 1) return;
+    busyRef.current = true;
+    setPrev(current);
+    setCurrent(idx);
+  }
+
+  function renderSlide(s: Slide | undefined) {
+    if (!s) {
+      return <img src="/bracelet-flower.jpg" alt="ThamArt beaded bracelets" className="w-full h-full object-cover" />;
     }
 
-    const media = detectMedia(slide.src, slide.type);
-    const isAds = slide.purpose === "ads";
+    const src = s.src.trim();
+    const media = detectMedia(src, s.type);
+    const isAds = s.purpose === "ads";
 
     if (media.kind === "youtube") {
       const muteParam = isAds ? "0" : "1";
-      const extraParams = slide.ytBranding ? "" : "&modestbranding=1&rel=0&iv_load_policy=3";
+      const extraParams = s.ytBranding ? "" : "&rel=0&iv_load_policy=3";
       return (
         <div className="relative w-full h-full">
+          {/* Thumbnail shown while iframe initialises */}
+          <img
+            src={`https://img.youtube.com/vi/${media.id}/maxresdefault.jpg`}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
           <iframe
             src={`https://www.youtube.com/embed/${media.id}?autoplay=1&mute=${muteParam}&loop=1&playlist=${media.id}&controls=0${extraParams}`}
             className="absolute inset-0 w-full h-full"
-            allow="autoplay; encrypted-media"
+            allow="autoplay; encrypted-media; fullscreen"
+            allowFullScreen
             style={{ border: 0 }}
-            title="slide"
+            title={s.label ?? "slide"}
           />
-          {!slide.ytBranding && <div className="absolute inset-0 z-10" />}
+          {!s.ytBranding && <div className="absolute inset-0 z-10" />}
         </div>
       );
     }
@@ -91,8 +133,9 @@ function HeroSlideshow() {
           src={`https://player.vimeo.com/video/${media.id}?autoplay=1&muted=${mutedParam}&loop=1&title=0&byline=0&portrait=0&background=${isAds ? "0" : "1"}`}
           className="w-full h-full"
           allow="autoplay; fullscreen"
+          allowFullScreen
           style={{ border: 0 }}
-          title="slide"
+          title={s.label ?? "slide"}
         />
       );
     }
@@ -100,7 +143,7 @@ function HeroSlideshow() {
     if (media.kind === "mp4") {
       return (
         <video
-          src={slide.src}
+          src={src}
           className="w-full h-full object-cover"
           autoPlay
           muted={!isAds}
@@ -112,12 +155,14 @@ function HeroSlideshow() {
 
     return (
       <img
-        src={slide.src}
-        alt={slide.caption ?? "ThamArt"}
+        src={src}
+        alt={s.caption ?? "ThamArt"}
         className="w-full h-full object-cover"
       />
     );
   }
+
+  const slide = slides[current];
 
   return (
     <div
@@ -125,11 +170,28 @@ function HeroSlideshow() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div key={current} className="absolute inset-0 hero-slide-in">{renderMedia()}</div>
+      {/* Exiting slide — animates out to the left */}
+      {prev !== null && (
+        <div key={`exit-${prev}`} className="absolute inset-0 hero-slide-exit">
+          {renderSlide(slides[prev])}
+        </div>
+      )}
+      {/* Entering slide — animates in from the right (no animation on very first load) */}
+      <div key={`enter-${current}`} className={`absolute inset-0 ${prev !== null ? "hero-slide-enter" : ""}`}>
+        {renderSlide(slide)}
+      </div>
 
-      {/* Caption overlay */}
+      {/* Remaining-seconds badge for video slides — z-30 */}
+      {remaining !== null && prev === null && (
+        <div className="absolute top-2 left-3 z-30 flex items-center gap-1 bg-black/50 text-white text-xs font-mono px-2 py-0.5 rounded-full select-none pointer-events-none">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+          {remaining}s
+        </div>
+      )}
+
+      {/* Caption overlay — z-20 to sit above both slide layers */}
       {slide && (slide.caption || slide.label || slide.ctaText) && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-4 z-20">
           {slide.label && (
             <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block mb-0.5">
               {slide.label}
@@ -149,26 +211,26 @@ function HeroSlideshow() {
         </div>
       )}
 
-      {/* Navigation */}
+      {/* Navigation — z-30 to sit above captions */}
       {slides.length > 1 && (
         <>
           <button
-            onClick={() => setCurrent((c) => (c - 1 + slides.length) % slides.length)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full text-white flex items-center justify-center text-xl leading-none transition"
+            onClick={() => goTo((current - 1 + slides.length) % slides.length)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full text-white flex items-center justify-center text-xl leading-none transition z-30"
           >
             ‹
           </button>
           <button
-            onClick={() => setCurrent((c) => (c + 1) % slides.length)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full text-white flex items-center justify-center text-xl leading-none transition"
+            onClick={() => goTo((current + 1) % slides.length)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full text-white flex items-center justify-center text-xl leading-none transition z-30"
           >
             ›
           </button>
-          <div className="absolute bottom-3 right-4 flex gap-1.5">
+          <div className="absolute bottom-3 right-4 flex gap-1.5 z-30">
             {slides.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setCurrent(i)}
+                onClick={() => goTo(i)}
                 className={`rounded-full transition-all ${
                   i === current
                     ? "w-4 h-1.5 bg-white"
