@@ -6,6 +6,7 @@ export interface Product {
   description: Record<Lang, string>;
   price: number; // BRL
   image: string;
+  category?: string;
   popular?: boolean;
   customizable?: boolean;
 }
@@ -24,6 +25,7 @@ export const PRODUCTS: Product[] = [
       en: "Our most loved bracelet: hand-beaded mini flowers with gold accents and a lobster clasp. Pick your favorite color!",
     },
     price: 39.9,
+    category: "pulseira",
     popular: true,
     customizable: true,
     image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187391/prod8_oadyhk.jpg",
@@ -41,6 +43,7 @@ export const PRODUCTS: Product[] = [
       en: "Red star-shaped crystals with white and green beads forming flowers. Elegant and sparkling.",
     },
     price: 54.9,
+    category: "pulseira",
     popular: true,
     image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187390/prod1_grmwt2.jpg",
   },
@@ -57,6 +60,7 @@ export const PRODUCTS: Product[] = [
       en: "Delicate beaded choker with little flowers and gold details. Matches any outfit.",
     },
     price: 49.9,
+    category: "colar",
     customizable: true,
     image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187391/prod4_ywdo6t.jpg",
   },
@@ -73,6 +77,7 @@ export const PRODUCTS: Product[] = [
       en: "Pair of earrings with beaded mini flowers and gold hooks. Light and charming.",
     },
     price: 29.9,
+    category: "brincos",
     image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187391/prod6_jitovl.jpg",
   },
   {
@@ -88,6 +93,7 @@ export const PRODUCTS: Product[] = [
       en: "Colorful flower anklet, perfect for summer. Adjustable and durable.",
     },
     price: 34.9,
+    category: "tornozeleira",
     customizable: true,
     image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187390/prod2_k2hgst.jpg",
   },
@@ -104,6 +110,7 @@ export const PRODUCTS: Product[] = [
       en: "Build your bracelet with a name or word in beads + flowers. Tell us the details in your order!",
     },
     price: 44.9,
+    category: "pulseira",
     customizable: true,
     image: "https://res.cloudinary.com/dos3zvyuj/image/upload/v1781187390/bracelet-crystal_e4dfvl.jpg",
   },

@@ -9,6 +9,7 @@ interface ProductBody {
   image?: string;
   popular?: boolean;
   customizable?: boolean;
+  category?: string;
 }
 
 export const POST = withAuth(async (req, decodedToken) => {
@@ -21,7 +22,7 @@ export const POST = withAuth(async (req, decodedToken) => {
   decodedToken;
 
   const body: ProductBody = await req.json();
-  const { name, description, price, image, popular, customizable } = body;
+  const { name, description, price, image, popular, customizable, category } = body;
 
   if (!name?.pt || !name?.fr || !name?.en)
     return NextResponse.json(
@@ -38,7 +39,7 @@ export const POST = withAuth(async (req, decodedToken) => {
   if (!image || typeof image !== "string")
     return NextResponse.json({ error: "image URL required" }, { status: 400 });
 
-  const data = {
+  const data: Record<string, unknown> = {
     name,
     description,
     price,
@@ -47,6 +48,7 @@ export const POST = withAuth(async (req, decodedToken) => {
     customizable: customizable ?? false,
     createdAt: new Date().toISOString(),
   };
+  if (category) data.category = category;
 
   const ref = await adminDb.collection("products").add(data);
   return NextResponse.json({ ok: true, id: ref.id, ...data });
@@ -74,6 +76,7 @@ export const PATCH = withAuth(async (req, decodedToken) => {
   if (updates.popular !== undefined) allowed.popular = updates.popular;
   if (updates.customizable !== undefined)
     allowed.customizable = updates.customizable;
+  if (updates.category !== undefined) allowed.category = updates.category;
   allowed.updatedAt = new Date().toISOString();
 
   await adminDb.collection("products").doc(id).update(allowed);

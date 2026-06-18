@@ -13,9 +13,30 @@ export const GET = withAuth(async () => {
     try {
         const snapshot = await db.collection("products").get();
 
+        // Static lookup for fields (like category) not yet present in Firestore records
+        const staticById = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]));
+
+        // Write category back to Firestore for any product that lacks it (one-time migration)
+        const toUpdate = snapshot.docs.filter(doc => {
+            const data = doc.data();
+            return !data.category && staticById[doc.id]?.category;
+        });
+        if (toUpdate.length > 0) {
+            const batch = db.batch();
+            toUpdate.forEach(doc => {
+                batch.update(doc.ref, { category: staticById[doc.id].category });
+            });
+            await batch.commit().catch(() => {}); // non-fatal
+        }
+
         const products = snapshot.docs.map(doc => {
             const { id: _discard, ...rest } = doc.data();   // destructure and discard
-            return { id: doc.id, ...rest };
+            const s = staticById[doc.id];
+            return {
+                id: doc.id,
+                ...(s?.category && !rest.category ? { category: s.category } : {}),
+                ...rest,
+            };
         });
 
         if (products.length === 0 && POPULATE && db) {

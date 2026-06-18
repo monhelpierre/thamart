@@ -5,14 +5,17 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, getAuthToken } from "@/lib/firebase";
 import { formatBRL } from "@/data/products";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfig";
+import ChatModal from "@/components/ChatModal";
 
 type Tab =
   | "orders"
   | "users"
   | "products"
+  | "categories"
   | "analytics"
   | "carts"
   | "email"
+  | "slides"
   | "config";
 
 type OrderStatus =
@@ -63,6 +66,7 @@ interface Product {
   description: { pt: string; fr: string; en: string };
   price: number;
   image: string;
+  category?: string;
   popular?: boolean;
   customizable?: boolean;
 }
@@ -155,9 +159,17 @@ const EMPTY_PRODUCT: Omit<Product, "id"> = {
   description: { pt: "", fr: "", en: "" },
   price: 0,
   image: "",
+  category: "",
   popular: false,
   customizable: false,
 };
+
+const KNOWN_CATEGORIES = [
+  { value: "pulseira", label: "📿 Pulseiras" },
+  { value: "colar", label: "✨ Colares" },
+  { value: "brincos", label: "💎 Brincos" },
+  { value: "tornozeleira", label: "🌊 Tornozeleiras" },
+];
 
 // ── Markdown ↔ HTML converters for the legal content editor ──
 
@@ -202,11 +214,577 @@ function htmlToMarkdown(html: string): string {
     .trim();
 }
 
+/* ── Slides Tab ── */
+interface Slide {
+  id: string;
+  type: "image" | "video";
+  src: string;
+  caption: string;
+  label: string;
+  ctaText: string;
+  ctaLink: string;
+  order: number;
+  ytBranding?: boolean;
+  purpose?: "product" | "ads";
+  duration?: number;
+}
+
+const DEFAULT_CATEGORIES = [
+  { slug: "pulseira", label: "Pulseiras", emoji: "📿" },
+  { slug: "colar", label: "Colares", emoji: "✨" },
+  { slug: "brincos", label: "Brincos", emoji: "💎" },
+  { slug: "tornozeleira", label: "Tornozeleiras", emoji: "🌊" },
+];
+
+const DEFAULT_SLIDES: Omit<Slide, "id">[] = [
+  {
+    type: "image",
+    src: "/bracelet-flower.jpg",
+    label: "ThamArt",
+    caption: "Joias feitas à mão com amor 💜",
+    ctaText: "Ver coleção",
+    ctaLink: "#menu",
+    order: 0,
+  },
+  {
+    type: "video",
+    src: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    label: "Exemplo YouTube — Substituir",
+    caption: "Adicione seu vídeo de produtos aqui",
+    ctaText: "Ver mais",
+    ctaLink: "#menu",
+    order: 1,
+  },
+  {
+    type: "video",
+    src: "https://www.youtube.com/watch?v=9bZkp7q19f0",
+    label: "Exemplo YouTube 2 — Substituir",
+    caption: "Vídeos de unboxing, processo ou depoimentos",
+    ctaText: "Comprar agora",
+    ctaLink: "#menu",
+    order: 2,
+  },
+];
+
+interface CategoryDef {
+  id: string;
+  slug: string;
+  label: string;
+  emoji: string;
+  order: number;
+}
+
+const EMPTY_CAT = { slug: "", label: "", emoji: "", order: 0 };
+
+function CategoriesTab({ idToken }: { idToken: string | null }) {
+  const [cats, setCats] = useState<CategoryDef[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(EMPTY_CAT);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const authFetch = (url: string, opts: RequestInit = {}) =>
+    fetch(url, { ...opts, headers: { ...(opts.headers as Record<string,string> ?? {}), Authorization: `Bearer ${idToken}` } });
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/categories");
+    if (res.ok) setCats(await res.json());
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function seedDefaults() {
+    setSaving(true);
+    for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
+      await authFetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...DEFAULT_CATEGORIES[i], order: i }),
+      });
+    }
+    await load();
+    setSaving(false);
+  }
+
+  async function save() {
+    if (!form.slug.trim() || !form.label.trim()) return;
+    setSaving(true);
+    if (editId) {
+      await authFetch("/api/admin/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editId, ...form }),
+      });
+    } else {
+      await authFetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, order: form.order || cats.length }),
+      });
+    }
+    setForm(EMPTY_CAT);
+    setEditId(null);
+    await load();
+    setSaving(false);
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Excluir categoria?")) return;
+    await authFetch(`/api/admin/categories?id=${id}`, { method: "DELETE" });
+    setCats((c) => c.filter((x) => x.id !== id));
+  }
+
+  function startEdit(cat: CategoryDef) {
+    setEditId(cat.id);
+    setForm({ slug: cat.slug, label: cat.label, emoji: cat.emoji, order: cat.order });
+  }
+
+  const inputCls = "w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/30";
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+          🏷️ Categorias ({cats.length})
+        </h2>
+        <div className="flex gap-2">
+          {cats.length === 0 && !loading && (
+            <button
+              onClick={seedDefaults}
+              disabled={saving}
+              className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg px-3 py-1.5 font-semibold text-slate-600 dark:text-slate-300 transition disabled:opacity-50"
+            >
+              {saving ? "..." : "⚡ Seed padrão"}
+            </button>
+          )}
+          <button onClick={load} className="text-sm text-[#9B2D8F] hover:underline">
+            {loading ? "Carregando..." : "↺ Atualizar"}
+          </button>
+        </div>
+      </div>
+
+      {/* Category list */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        {cats.length === 0 && !loading && (
+          <div className="text-center py-10 text-slate-400">
+            Nenhuma categoria ainda — clique em ⚡ Seed padrão ou adicione abaixo
+          </div>
+        )}
+        {cats.map((cat, i) => (
+          <div
+            key={cat.id}
+            className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-slate-100 dark:border-slate-800" : ""}`}
+          >
+            <span className="text-xl w-7 text-center">{cat.emoji || "🏷️"}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{cat.label}</p>
+              <p className="text-xs text-slate-400 font-mono">{cat.slug} · ordem {cat.order}</p>
+            </div>
+            <div className="flex gap-1 shrink-0">
+              <button
+                onClick={() => startEdit(cat)}
+                className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg px-2.5 py-1.5 font-semibold text-slate-600 dark:text-slate-300 transition"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={() => remove(cat.id)}
+                className="text-xs bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg px-2.5 py-1.5 font-semibold text-red-500 transition"
+              >
+                🗑
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add / Edit form */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
+        <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
+          {editId ? "✏️ Editar categoria" : "+ Nova categoria"}
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Emoji</label>
+            <input
+              type="text"
+              maxLength={4}
+              value={form.emoji}
+              onChange={(e) => setForm((f) => ({ ...f, emoji: e.target.value }))}
+              placeholder="📿"
+              className={inputCls}
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Nome exibido *</label>
+            <input
+              type="text"
+              value={form.label}
+              onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+              placeholder="Pulseiras"
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Ordem</label>
+            <input
+              type="number"
+              min={0}
+              value={form.order}
+              onChange={(e) => setForm((f) => ({ ...f, order: Number(e.target.value) }))}
+              className={inputCls}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Slug (identificador) *</label>
+          <input
+            type="text"
+            value={form.slug}
+            onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") }))}
+            placeholder="pulseira"
+            className={inputCls}
+          />
+          <p className="text-[10px] text-slate-400 mt-1">
+            O slug deve coincidir com o campo "Categoria" nos produtos (ex: <span className="font-mono">pulseira</span>)
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={save}
+            disabled={saving || !form.slug.trim() || !form.label.trim()}
+            className="flex-1 bg-[var(--primary)] text-white font-bold py-2.5 rounded-xl hover:bg-[var(--primary-dark)] transition disabled:opacity-50 text-sm"
+          >
+            {saving ? "Salvando..." : editId ? "Salvar alterações" : "Criar categoria"}
+          </button>
+          {editId && (
+            <button
+              onClick={() => { setEditId(null); setForm(EMPTY_CAT); }}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const EMPTY_SLIDE_FORM = { type: "image" as "image" | "video", src: "", caption: "", label: "", ctaText: "", ctaLink: "", order: 0, ytBranding: false, purpose: "product" as "product" | "ads", duration: "" as "" | number };
+
+function SlidesTab({ idToken }: { idToken: string | null }) {
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(EMPTY_SLIDE_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/slides", { headers: { Authorization: `Bearer ${idToken}` } });
+    if (res.ok) setSlides(await res.json());
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function startEdit(s: Slide) {
+    setEditingId(s.id);
+    setForm({ type: s.type, src: s.src, caption: s.caption, label: s.label, ctaText: s.ctaText, ctaLink: s.ctaLink, order: s.order, ytBranding: s.ytBranding ?? false, purpose: s.purpose ?? "product", duration: s.duration ?? "" });
+    document.getElementById("slide-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm({ ...EMPTY_SLIDE_FORM, order: slides.length });
+  }
+
+  async function saveSlide() {
+    if (!form.src.trim()) return;
+    setSaving(true);
+    if (editingId) {
+      await fetch("/api/slides", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ id: editingId, ...form }),
+      });
+      setEditingId(null);
+    } else {
+      await fetch("/api/slides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify(form),
+      });
+    }
+    setForm({ ...EMPTY_SLIDE_FORM, order: slides.length + 1 });
+    await load();
+    setSaving(false);
+  }
+
+  async function deleteSlide(id: string) {
+    if (!confirm("Remover este slide?")) return;
+    if (editingId === id) cancelEdit();
+    await fetch(`/api/slides?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${idToken}` } });
+    setSlides((s) => s.filter((x) => x.id !== id));
+  }
+
+  async function seedSlides() {
+    setSaving(true);
+    for (const s of DEFAULT_SLIDES) {
+      await fetch("/api/slides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify(s),
+      });
+    }
+    await load();
+    setSaving(false);
+  }
+
+  async function uploadMedia(file: File) {
+    const isVideo = file.type.startsWith("video/");
+    const endpoint = `/api/admin/upload${isVideo ? "?resource=video" : ""}`;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Falha no upload: ${err.error ?? "erro desconhecido"}`);
+        return;
+      }
+      const { url } = await res.json();
+      setForm((f) => ({
+        ...f,
+        src: url,
+        type: isVideo ? "video" : "image",
+      }));
+    } catch {
+      alert("Erro ao enviar arquivo.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  const inputCls = "w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/30";
+  const isYoutube = /youtube\.com|youtu\.be/i.test(form.src);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Slides do Hero ({slides.length})</h2>
+        <div className="flex items-center gap-3">
+          {slides.length === 0 && !loading && (
+            <button
+              onClick={seedSlides}
+              disabled={saving}
+              className="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg px-3 py-1.5 font-semibold text-slate-600 dark:text-slate-300 transition disabled:opacity-50"
+            >
+              {saving ? "..." : "⚡ Seed padrão"}
+            </button>
+          )}
+          <button onClick={load} className="text-sm text-[#9B2D8F] hover:underline">{loading ? "Carregando..." : "↺ Atualizar"}</button>
+        </div>
+      </div>
+
+      {/* Existing slides */}
+      <div className="space-y-3">
+        {slides.map((s, i) => (
+          <div key={s.id} className={`flex items-center gap-3 bg-white dark:bg-slate-900 rounded-2xl border p-3 shadow-sm transition ${editingId === s.id ? "border-[#9B2D8F] ring-2 ring-[#9B2D8F]/20" : "border-slate-200 dark:border-slate-700"}`}>
+            <span className="text-2xl shrink-0">{s.type === "video" || /youtube\.com|youtu\.be|vimeo\.com|\.(mp4|webm|ogg|mov)/i.test(s.src) ? "🎬" : "🖼️"}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{s.label || `Slide ${i + 1}`}</p>
+              <p className="text-xs text-slate-400 truncate">{s.src}</p>
+              {s.caption && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{s.caption}</p>}
+              <div className="flex flex-wrap gap-1 mt-1">
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${s.purpose === "ads" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"}`}>
+                  {s.purpose === "ads" ? "📢 Ads" : "📦 Produto"}
+                </span>
+                {s.type === "video" && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                    ⏱ {s.duration ?? 20}s
+                  </span>
+                )}
+                {/youtube\.com|youtu\.be/i.test(s.src) && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${s.ytBranding ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"}`}>
+                    {s.ytBranding ? "YT branding ativo" : "sem branding YT"}
+                  </span>
+                )}
+              </div>
+            </div>
+            {(() => {
+              const cls = "w-16 h-12 object-cover rounded-lg border border-slate-100 dark:border-slate-700 shrink-0";
+              const ytMatch = s.src.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/);
+              if (ytMatch) return <img src={`https://img.youtube.com/vi/${ytMatch[1]}/mqdefault.jpg`} alt="" className={cls} />;
+              if (s.type === "video" && s.src.startsWith("http")) return <video src={s.src} className={cls} muted preload="metadata" />;
+              if (s.src.startsWith("http") || s.src.startsWith("/")) return <img src={s.src} alt="" className={cls} />;
+              return null;
+            })()}
+            <button onClick={() => startEdit(s)} className="text-slate-400 hover:text-[#9B2D8F] text-lg shrink-0" title="Editar">✏️</button>
+            <button onClick={() => deleteSlide(s.id)} className="text-red-400 hover:text-red-600 text-lg shrink-0" title="Remover">🗑</button>
+          </div>
+        ))}
+        {slides.length === 0 && !loading && (
+          <div className="text-center py-10 text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700">
+            Nenhum slide ainda — clique em ⚡ Seed padrão ou adicione abaixo
+          </div>
+        )}
+      </div>
+
+      {/* Add / Edit form */}
+      <div id="slide-form" className={`rounded-2xl border shadow-sm p-5 space-y-4 transition ${editingId ? "bg-purple-50 dark:bg-slate-800/60 border-[#9B2D8F]/40" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"}`}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">
+            {editingId ? "✏️ Editar slide" : "+ Novo slide"}
+          </h3>
+          {editingId && (
+            <button onClick={cancelEdit} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 underline">
+              Cancelar
+            </button>
+          )}
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Tipo de mídia</label>
+            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as "image" | "video" }))} className={inputCls}>
+              <option value="image">🖼️ Imagem</option>
+              <option value="video">🎬 Vídeo (YouTube, Vimeo ou MP4)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Propósito</label>
+            <select value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value as "product" | "ads" }))} className={inputCls}>
+              <option value="product">📦 Produto</option>
+              <option value="ads">📢 Publicidade / Ads</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Ordem</label>
+            <input type="number" min={0} value={form.order} onChange={(e) => setForm((f) => ({ ...f, order: Number(e.target.value) }))} className={inputCls} />
+          </div>
+        </div>
+        {form.type === "video" && (
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Duração no slide (segundos)</label>
+              <input
+                type="number"
+                min={1}
+                value={form.duration}
+                onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value === "" ? "" : Number(e.target.value) }))}
+                placeholder="20 (padrão)"
+                className={inputCls}
+              />
+            </div>
+            {form.purpose === "ads" && (
+              <div className="flex items-center gap-2 flex-1 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 px-3 py-2.5 self-end mb-0.5">
+                <span className="text-base">🔊</span>
+                <p className="text-xs text-amber-700 dark:text-amber-400">Publicidade reproduz <strong>com som</strong>.</p>
+              </div>
+            )}
+          </div>
+        )}
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            {form.type === "video" ? "URL ou arquivo de vídeo *" : "URL ou arquivo de imagem *"}
+          </label>
+          <div className="flex gap-2 items-stretch">
+            <input
+              type="text"
+              value={form.src}
+              onChange={(e) => setForm((f) => ({ ...f, src: e.target.value }))}
+              placeholder={form.type === "video" ? "https://youtube.com/watch?v=... ou cole URL do Cloudinary" : "https://res.cloudinary.com/..."}
+              className={`${inputCls} flex-1`}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMedia(f); }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-semibold transition disabled:opacity-50 whitespace-nowrap"
+            >
+              {uploading ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                  Enviando…
+                </>
+              ) : (
+                <>{form.type === "video" ? "📹" : "🖼️"} Upload</>
+              )}
+            </button>
+          </div>
+          {form.type === "video" && (
+            <p className="text-[10px] text-slate-400 mt-1">Vídeos grandes (&gt;50 MB) podem falhar — prefira YouTube ou Vimeo para arquivos pesados.</p>
+          )}
+        </div>
+        {form.type === "video" && (
+          <label className={`flex items-center gap-2 cursor-pointer select-none rounded-xl px-3 py-2.5 border transition ${isYoutube ? "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800" : "border-slate-100 dark:border-slate-800 opacity-40 pointer-events-none"}`}>
+            <input
+              type="checkbox"
+              checked={form.ytBranding}
+              disabled={!isYoutube}
+              onChange={(e) => setForm((f) => ({ ...f, ytBranding: e.target.checked }))}
+              className="w-4 h-4 accent-[#9B2D8F]"
+            />
+            <div>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mostrar marca YouTube</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">{isYoutube ? "Exibe título, ícone YT e permite clicar para abrir o YouTube" : "Apenas para URLs do YouTube"}</p>
+            </div>
+          </label>
+        )}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Rótulo (ex: Produto da semana)</label>
+            <input type="text" value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Legenda</label>
+            <input type="text" value={form.caption} onChange={(e) => setForm((f) => ({ ...f, caption: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Texto do botão CTA</label>
+            <input type="text" value={form.ctaText} onChange={(e) => setForm((f) => ({ ...f, ctaText: e.target.value }))} placeholder="Ver produto" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Link do CTA</label>
+            <input type="text" value={form.ctaLink} onChange={(e) => setForm((f) => ({ ...f, ctaLink: e.target.value }))} placeholder="#menu ou /produto/123" className={inputCls} />
+          </div>
+        </div>
+        <button
+          onClick={saveSlide}
+          disabled={saving || !form.src.trim()}
+          className="w-full rounded-xl bg-[#9B2D8F] hover:bg-[#7A2270] text-white font-bold py-3 transition disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Adicionar slide"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<Tab>("orders");
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<{ uid: string; displayName: string; email: string; photoURL: string | null } | null>(null);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -216,6 +794,7 @@ export default function AdminPage() {
     status: OrderStatus;
     trackingCode: string;
   } | null>(null);
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
 
   // Users
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -235,6 +814,15 @@ export default function AdminPage() {
   const [carts, setCarts] = useState<CartRow[]>([]);
   const [cartsLoading, setCartsLoading] = useState(false);
   const [expandedCart, setExpandedCart] = useState<string | null>(null);
+
+  // Live categories (used in product form dropdown)
+  const [liveCats, setLiveCats] = useState<CategoryDef[]>([]);
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d) && d.length) setLiveCats(d); })
+      .catch(() => {});
+  }, []);
 
   // Products
   const [products, setProducts] = useState<Product[]>([]);
@@ -309,6 +897,7 @@ export default function AdminPage() {
       }
       const token = await u.getIdToken();
       setIdToken(token);
+      setAdminUser({ uid: u.uid, displayName: u.displayName ?? "Admin", email: u.email ?? "", photoURL: u.photoURL });
       // verify admin via a quick probe
       const res = await fetch("/api/admin/orders", {
         headers: { Authorization: `Bearer ${token}` },
@@ -914,8 +1503,10 @@ export default function AdminPage() {
     { key: "orders", label: "Pedidos", icon: "📦" },
     { key: "users", label: "Usuários", icon: "👥" },
     { key: "products", label: "Produtos", icon: "💎" },
+    { key: "categories", label: "Categorias", icon: "🏷️" },
     { key: "carts", label: "Carrinhos", icon: "🛒" },
     { key: "email", label: "E-mails", icon: "✉️" },
+    { key: "slides", label: "Slides", icon: "🖼️" },
     { key: "analytics", label: "Analytics", icon: "📊" },
     { key: "config", label: "Config", icon: "⚙️" },
   ];
@@ -1132,18 +1723,26 @@ export default function AdminPage() {
                                 </div>
                               </div>
                             ) : (
-                              <button
-                                onClick={() =>
-                                  setEditingOrder({
-                                    id: order.id,
-                                    status: order.status,
-                                    trackingCode: order.trackingCode ?? "",
-                                  })
-                                }
-                                className="text-xs text-[var(--secondary)] hover:underline"
-                              >
-                                ✏️ Editar
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() =>
+                                    setEditingOrder({
+                                      id: order.id,
+                                      status: order.status,
+                                      trackingCode: order.trackingCode ?? "",
+                                    })
+                                  }
+                                  className="text-xs text-[var(--secondary)] hover:underline"
+                                >
+                                  ✏️ Editar
+                                </button>
+                                <button
+                                  onClick={() => setChatOrderId(order.id)}
+                                  className="text-xs text-[#9B2D8F] hover:underline"
+                                >
+                                  💬 Chat
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -1377,9 +1976,16 @@ export default function AdminPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-bold text-[var(--primary)]">
-                      {formatBRL(p.price)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-[var(--primary)]">
+                        {formatBRL(p.price)}
+                      </p>
+                      {p.category && (
+                        <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">
+                          {p.category}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button
@@ -1421,6 +2027,11 @@ export default function AdminPage() {
               onChange={setProductPage}
             />
           </div>
+        )}
+
+        {/* ── CATEGORIES ── */}
+        {tab === "categories" && (
+          <CategoriesTab idToken={idToken} />
         )}
 
         {/* ── CARTS ── */}
@@ -1744,6 +2355,11 @@ export default function AdminPage() {
         )}
 
         {/* ── ANALYTICS ── */}
+        {/* ── SLIDES ── */}
+        {tab === "slides" && (
+          <SlidesTab idToken={idToken} />
+        )}
+
         {tab === "analytics" && (
           <div className="space-y-6">
             {/* Stat cards */}
@@ -2271,6 +2887,16 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* ── Admin Chat ── */}
+      <ChatModal
+        open={chatOrderId !== null}
+        orderId={chatOrderId ?? ""}
+        orderShortId={chatOrderId?.slice(0, 8).toUpperCase()}
+        user={adminUser}
+        isAdmin
+        onClose={() => setChatOrderId(null)}
+      />
+
       {/* ── Product Modal ── */}
       {productModal && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
@@ -2404,6 +3030,38 @@ export default function AdminPage() {
                     </span>
                   </label>
                 </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Categoria
+                </label>
+                <select
+                  value={productForm.category ?? ""}
+                  onChange={(e) =>
+                    setProductForm((f) => ({ ...f, category: e.target.value }))
+                  }
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                >
+                  <option value="">— Sem categoria —</option>
+                  {(liveCats.length > 0
+                    ? liveCats.map((c) => ({ slug: c.slug, label: c.label, emoji: c.emoji }))
+                    : KNOWN_CATEGORIES.map((c) => ({ slug: c.value, label: c.label, emoji: "" }))
+                  ).map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.emoji ? `${c.emoji} ` : ""}{c.label}
+                    </option>
+                  ))}
+                  {/* Show current value as option if it's not in the list */}
+                  {productForm.category &&
+                    !liveCats.find((c) => c.slug === productForm.category) &&
+                    !KNOWN_CATEGORIES.find((c) => c.value === productForm.category) && (
+                      <option value={productForm.category}>
+                        {productForm.category}
+                      </option>
+                    )}
+                </select>
               </div>
 
               {/* Names */}
