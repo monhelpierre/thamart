@@ -12,6 +12,23 @@ interface Slide {
   label?: string;
   ctaText?: string;
   ctaLink?: string;
+  ytBranding?: boolean;
+  purpose?: "product" | "ads";
+  duration?: number;
+}
+
+function detectMedia(src: string, type: "image" | "video" = "image") {
+  const ytMatch = src.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/);
+  if (ytMatch) return { kind: "youtube" as const, id: ytMatch[1] };
+
+  const vimeoMatch = src.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) return { kind: "vimeo" as const, id: vimeoMatch[1] };
+
+  if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(src)) return { kind: "mp4" as const, id: null };
+
+  if (type === "video") return { kind: "mp4" as const, id: null };
+
+  return { kind: "image" as const, id: null };
 }
 
 function HeroSlideshow() {
@@ -28,9 +45,11 @@ function HeroSlideshow() {
 
   useEffect(() => {
     if (slides.length <= 1 || paused) return;
-    const t = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 5000);
-    return () => clearInterval(t);
-  }, [slides.length, paused]);
+    const slide = slides[current];
+    const duration = slide?.type === "video" ? (slide.duration ?? 20) * 1000 : 5000;
+    const t = setTimeout(() => setCurrent((c) => (c + 1) % slides.length), duration);
+    return () => clearTimeout(t);
+  }, [slides.length, paused, current]);
 
   const slide = slides[current];
 
@@ -44,35 +63,58 @@ function HeroSlideshow() {
         />
       );
     }
-    if (slide.type === "video") {
-      const ytMatch = slide.src.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?/]+)/);
-      if (ytMatch) {
-        return (
+
+    const media = detectMedia(slide.src, slide.type);
+    const isAds = slide.purpose === "ads";
+
+    if (media.kind === "youtube") {
+      const muteParam = isAds ? "0" : "1";
+      const extraParams = slide.ytBranding ? "" : "&modestbranding=1&rel=0&iv_load_policy=3";
+      return (
+        <div className="relative w-full h-full">
           <iframe
-            src={`https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&controls=0`}
-            className="w-full h-full"
+            src={`https://www.youtube.com/embed/${media.id}?autoplay=1&mute=${muteParam}&loop=1&playlist=${media.id}&controls=0${extraParams}`}
+            className="absolute inset-0 w-full h-full"
             allow="autoplay; encrypted-media"
             style={{ border: 0 }}
             title="slide"
           />
-        );
-      }
+          {!slide.ytBranding && <div className="absolute inset-0 z-10" />}
+        </div>
+      );
+    }
+
+    if (media.kind === "vimeo") {
+      const mutedParam = isAds ? "0" : "1";
+      return (
+        <iframe
+          src={`https://player.vimeo.com/video/${media.id}?autoplay=1&muted=${mutedParam}&loop=1&title=0&byline=0&portrait=0&background=${isAds ? "0" : "1"}`}
+          className="w-full h-full"
+          allow="autoplay; fullscreen"
+          style={{ border: 0 }}
+          title="slide"
+        />
+      );
+    }
+
+    if (media.kind === "mp4") {
       return (
         <video
           src={slide.src}
           className="w-full h-full object-cover"
           autoPlay
-          muted
+          muted={!isAds}
           loop
           playsInline
         />
       );
     }
+
     return (
       <img
         src={slide.src}
         alt={slide.caption ?? "ThamArt"}
-        className="w-full h-full object-cover transition-opacity duration-700"
+        className="w-full h-full object-cover"
       />
     );
   }
@@ -83,7 +125,7 @@ function HeroSlideshow() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="absolute inset-0">{renderMedia()}</div>
+      <div key={current} className="absolute inset-0 hero-slide-in">{renderMedia()}</div>
 
       {/* Caption overlay */}
       {slide && (slide.caption || slide.label || slide.ctaText) && (
@@ -643,12 +685,21 @@ export function About() {
   );
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
+// Fallback labels used when the API has no categories yet
+const FALLBACK_LABELS: Record<string, string> = {
   pulseira: "📿 Pulseiras",
   colar: "✨ Colares",
   brincos: "💎 Brincos",
   tornozeleira: "🌊 Tornozeleiras",
 };
+
+interface CategoryDef {
+  id: string;
+  slug: string;
+  label: string;
+  emoji?: string;
+  order: number;
+}
 
 export function CategoryBar({
   products,
@@ -659,45 +710,55 @@ export function CategoryBar({
   selected: string | null;
   onSelect: (cat: string | null) => void;
 }) {
-  const categories = useMemo(() => {
+  const [apiCats, setApiCats] = useState<CategoryDef[]>([]);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data) && data.length) setApiCats(data); })
+      .catch(() => {});
+  }, []);
+
+  // Derive from products as fallback when Firestore has no categories yet
+  const productSlugs = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
     products.forEach((p) => {
-      if (p.category && !seen.has(p.category)) {
-        seen.add(p.category);
-        out.push(p.category);
-      }
+      if (p.category && !seen.has(p.category)) { seen.add(p.category); out.push(p.category); }
     });
     return out;
   }, [products]);
 
+  const categories: CategoryDef[] = apiCats.length > 0
+    ? apiCats
+    : productSlugs.map((slug, i) => ({
+        id: slug,
+        slug,
+        label: FALLBACK_LABELS[slug] ?? slug,
+        emoji: "",
+        order: i,
+      }));
+
   if (categories.length === 0) return null;
+
+  const pillBase = "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition";
+  const pillActive = "bg-[var(--primary)] text-white";
+  const pillInactive = "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
 
   return (
     <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
       <div className="mx-auto max-w-6xl px-4 py-3">
         <div className="flex gap-2 overflow-x-auto scrollbar-none">
-          <button
-            onClick={() => onSelect(null)}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-              selected === null
-                ? "bg-[var(--primary)] text-white"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-            }`}
-          >
+          <button onClick={() => onSelect(null)} className={`${pillBase} ${selected === null ? pillActive : pillInactive}`}>
             🛍️ Todos
           </button>
           {categories.map((cat) => (
             <button
-              key={cat}
-              onClick={() => onSelect(selected === cat ? null : cat)}
-              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-                selected === cat
-                  ? "bg-[var(--primary)] text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
+              key={cat.slug}
+              onClick={() => onSelect(selected === cat.slug ? null : cat.slug)}
+              className={`${pillBase} ${selected === cat.slug ? pillActive : pillInactive}`}
             >
-              {CATEGORY_LABELS[cat] ?? cat}
+              {cat.emoji ? `${cat.emoji} ` : ""}{cat.label}
             </button>
           ))}
         </div>
@@ -875,64 +936,3 @@ export function Footer() {
   );
 }
 
-export function About() {
-  const { t } = useI18n();
-  const cfg = useSiteConfig();
-  return (
-    <section id="about" className="mx-auto max-w-6xl px-4 py-16 md:py-20">
-      <div className="grid md:grid-cols-2 gap-10 items-center">
-        <div className="relative">
-          <div className="absolute -inset-3 rounded-3xl bg-[#F3E0F0] -rotate-2" />
-          <img
-            src="/necklace.jpg"
-            alt="Crafting beaded jewelry"
-            loading="lazy"
-            className="relative rounded-2xl shadow-xl w-full object-cover aspect-[4/3]"
-          />
-        </div>
-        <div>
-          <p className="text-sm font-bold uppercase tracking-widest text-[var(--primary)]">
-            💜 {t("navAbout")}
-          </p>
-          <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">
-            {t("aboutTitle")}
-          </h2>
-          <p className="mt-4 text-slate-500 dark:text-slate-400 leading-relaxed">
-            {t("aboutText")}
-          </p>
-          <a
-            href={cfg.facebookUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 inline-flex items-center gap-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary-dark)] px-6 py-3.5 font-bold text-white transition shadow-lg shadow-cyan-500/25"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.026 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-            </svg>
-            {t("followFacebook")}
-          </a>
-          <a
-            href={cfg.instagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 ml-3 inline-flex items-center gap-2.5 rounded-xl bg-[#C13584] px-6 py-3.5 font-bold text-white hover:bg-[#a0226f] transition shadow-lg shadow-pink-500/25"
-          >
-            {/* Instagram link */}
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="opacity-90"
-            >
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.346 3.608 1.32.975.975 1.258 2.242 1.32 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.345 2.633-1.32 3.608-.975.975-2.242 1.258-3.608 1.32-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.345-3.608-1.32-.975-.975-1.258-2.242-1.32-3.608C2.175 15.747 2.163 15.367 2.163 12s.012-3.584.07-4.85c.062-1.366.345-2.633 1.32-3.608C4.528 2.579 5.795 2.296 7.161 2.234 8.427 2.176 8.807 2.163 12 2.163zm0-2.163C8.741 0 8.332.013 7.052.073 5.771.132 4.675.4 3.7 1.376 2.724 2.352 2.456 3.449 2.397 4.73 2.337 6.01 2.324 6.419 2.324 9.678s.013 3.668.073 4.948c.059 1.281.327 2.378 1.303 3.354.976.976 2.073 1.244 3.354 1.303 1.28.06 1.689.073 4.948.073s3.668-.013 4.948-.073c1.281-.059 2.378-.327 3.354-1.303.976-.976 1.244-2.073 1.303-3.354.06-1.28.073-1.689.073-4.948s-.013-3.668-.073-4.948c-.059-1.281-.327-2.378-1.303-3.354C19.378.4 18.281.132 17 .073 15.72.013 15.311 0 12 0z" />
-              <path d="M12 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a3.999 3.999 0 1 1 0-7.998 3.999 3.999 0 0 1 0 7.998z" />
-              <circle cx="18.406" cy="5.594" r="1.44" />
-            </svg>
-            {t("followInstagram")}
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}

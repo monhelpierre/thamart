@@ -28,11 +28,12 @@ export async function POST(req: Request) {
     if (!(await verifyAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     if (!adminDb) return NextResponse.json({ error: "DB unavailable" }, { status: 500 });
 
-    const { type = "image", src, caption = "", label = "", ctaText = "", ctaLink = "", order = 0 } = await req.json();
+    const { type = "image", src, caption = "", label = "", ctaText = "", ctaLink = "", order = 0, ytBranding = false, purpose = "product", duration } = await req.json();
     if (!src) return NextResponse.json({ error: "src required" }, { status: 400 });
 
     const ref = await adminDb.collection("slides").add({
-        type, src, caption, label, ctaText, ctaLink,
+        type, src, caption, label, ctaText, ctaLink, ytBranding, purpose,
+        ...(duration != null ? { duration: Number(duration) } : {}),
         order: Number(order),
         createdAt: new Date().toISOString(),
     });

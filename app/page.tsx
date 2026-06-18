@@ -56,21 +56,25 @@ export default function Home() {
   // Address prompt (shown once after login if no saved address)
   const [addressPromptOpen, setAddressPromptOpen] = useState(false);
 
-  // Bottom nav: track which section is scrolled into view
-  const [scrolledToMenu, setScrolledToMenu] = useState(false);
+  // Bottom nav: "home" | "catalog" | null (scrolled past catalog)
+  const [navSection, setNavSection] = useState<"home" | "catalog" | null>("home");
   useEffect(() => {
     function update() {
       const el = document.getElementById("menu");
       if (!el) return;
-      setScrolledToMenu(el.getBoundingClientRect().top <= window.innerHeight * 0.6);
+      const { top, bottom } = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      if (bottom <= 0) setNavSection(null);
+      else if (top <= vh * 0.6) setNavSection("catalog");
+      else setNavSection("home");
     }
     window.addEventListener("scroll", update, { passive: true });
     update();
     return () => window.removeEventListener("scroll", update);
   }, []);
 
-  // Derived active nav item — modals take priority, then scroll position
-  const activeNavItem = cartOpen ? "cart" : ordersOpen ? "orders" : scrolledToMenu ? "catalog" : "home";
+  // Modals take priority over scroll-based section
+  const activeNavItem = cartOpen ? "cart" : ordersOpen ? "orders" : navSection;
 
   useEffect(() => {
     try {
@@ -413,10 +417,7 @@ export default function Home() {
         notes={notes}
         user={user}
         onNotes={setNotes}
-        onClose={() => {
-          setCartOpen(false);
-          setActiveTab("home");
-        }}
+        onClose={() => setCartOpen(false)}
         onChangeQty={changeQty}
         onCheckout={handleCheckout}
         products={products}
@@ -437,10 +438,7 @@ export default function Home() {
         open={ordersOpen}
         user={user}
         highlightOrderId={highlightOrderId}
-        onClose={() => {
-          setOrdersOpen(false);
-          setActiveTab("home");
-        }}
+        onClose={() => setOrdersOpen(false)}
         onReview={handleReview}
       />
 

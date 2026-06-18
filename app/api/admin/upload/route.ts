@@ -16,6 +16,9 @@ export const POST = withAuth(async (req, decodedToken) => {
 
   decodedToken;
 
+  const url = new URL(req.url);
+  const resourceType = url.searchParams.get("resource") === "video" ? "video" : "image";
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file)
@@ -36,7 +39,7 @@ export const POST = withAuth(async (req, decodedToken) => {
   upload.append("signature", signature);
 
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
     {
       method: "POST",
       body: upload,
