@@ -707,8 +707,14 @@ export function CategoryBar({
 }
 
 export function Footer() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const cfg = useSiteConfig();
+  const whatsappCreatorMsg =
+    lang === "pt"
+      ? `Olá, vi este site ${cfg.brandName} e gostaria de encomendar um igual.`
+      : lang === "fr"
+        ? `Bonjour, j'ai vu ce site ${cfg.brandName} et je souhaiterais commander un similaire.`
+        : `Hi, I saw this site ${cfg.brandName} and I'd like to order one like it.`;
   return (
     <footer className="bg-[#4A1559] text-white">
       <div className="mx-auto max-w-6xl px-4 py-12 grid sm:grid-cols-3 gap-8">
@@ -744,7 +750,18 @@ export function Footer() {
           </p>
           <ul className="space-y-2 text-purple-100">
             <li>📍 Brasil</li>
-            {cfg.whatsappDisplay && <li>📱 WhatsApp: {cfg.whatsappDisplay}</li>}
+            {cfg.whatsappDisplay && (
+              <li>
+                📱 WhatsApp:{" "}
+                <a
+                  href={`https://wa.me/${cfg.whatsappNumber}?text=${encodeURIComponent(whatsappCreatorMsg)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {cfg.whatsappDisplay}
+                </a>
+              </li>
+            )}
           </ul>
         </div>
         <div className="text-sm">
@@ -778,34 +795,75 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10 py-4 text-center text-xs text-purple-300">
-        © {new Date().getFullYear()} {cfg.brandName || t("brand")} — {t("footerRights")}
+        © {new Date().getFullYear()} {cfg.brandName || t("brand")} —{" "}
+        {t("footerRights")}
         {cfg.creatorName && (
           <div className="mt-3 flex items-center justify-center gap-3 text-[13px] text-purple-200">
             <span className="inline-flex items-center gap-2 font-semibold">
               Created by{" "}
               {cfg.creatorLogoUrl && (
-                <img src={cfg.creatorLogoUrl} alt={`${cfg.creatorName} logo`} className="w-5 h-5 rounded object-cover" />
+                <img
+                  src={cfg.creatorLogoUrl}
+                  alt={`${cfg.creatorName} logo`}
+                  className="w-5 h-5 rounded object-cover"
+                />
               )}
               {cfg.creatorName}
             </span>
             {cfg.creatorWhatsapp && (
-              <a href={`https://wa.me/${cfg.creatorWhatsapp}`} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="text-white/80 hover:text-emerald-400 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <a
+                href={`https://wa.me/${cfg.creatorWhatsapp}?text=${encodeURIComponent(whatsappCreatorMsg)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                className="text-white/80 hover:text-emerald-400 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
                   <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.37 0 .02 5.35.02 12c0 2.11.55 4.17 1.6 6L0 24l6.27-1.61A11.94 11.94 0 0012 24c6.63 0 12-5.37 12-12 0-3.2-1.25-6.16-3.48-8.52zM12 21.6c-1.6 0-3.16-.36-4.56-1.04l-.33-.16-3.72.96.98-3.63-.21-.37A9.6 9.6 0 012.4 12 9.6 9.6 0 0112 2.4c5.28 0 9.6 4.32 9.6 9.6S17.28 21.6 12 21.6z" />
-                  <path d="M17.06 14.14c-.26-.13-1.53-.76-1.77-.85-.24-.09-.41-.13-.58.13-.16.26-.63.85-.77 1.03-.14.18-.28.2-.52.07-.24-.13-1.02-.38-1.94-1.2-.72-.64-1.2-1.44-1.34-1.67-.14-.24-.01-.37.1-.5.09-.09.24-.24.36-.36.12-.12.16-.2.24-.34.08-.14.04-.26-.02-.39-.06-.13-.58-1.39-.8-1.9-.21-.5-.43-.43-.58-.43-.15 0-.32-.01-.49-.01-.17 0-.44.06-.67.31-.24.24-.93.91-.93 2.22 0 1.31.95 2.58 1.08 2.76.12.18 1.86 2.88 4.51 3.93 1.33.52 1.88.56 2.56.47.83-.11 2.53-1.03 2.88-2.03.35-1-.35-1.2-.61-1.33z" fill="#fff" />
+                  <path
+                    d="M17.06 14.14c-.26-.13-1.53-.76-1.77-.85-.24-.09-.41-.13-.58.13-.16.26-.63.85-.77 1.03-.14.18-.28.2-.52.07-.24-.13-1.02-.38-1.94-1.2-.72-.64-1.2-1.44-1.34-1.67-.14-.24-.01-.37.1-.5.09-.09.24-.24.36-.36.12-.12.16-.2.24-.34.08-.14.04-.26-.02-.39-.06-.13-.58-1.39-.8-1.9-.21-.5-.43-.43-.58-.43-.15 0-.32-.01-.49-.01-.17 0-.44.06-.67.31-.24.24-.93.91-.93 2.22 0 1.31.95 2.58 1.08 2.76.12.18 1.86 2.88 4.51 3.93 1.33.52 1.88.56 2.56.47.83-.11 2.53-1.03 2.88-2.03.35-1-.35-1.2-.61-1.33z"
+                    fill="#fff"
+                  />
                 </svg>
               </a>
             )}
             {cfg.creatorFacebook && (
-              <a href={cfg.creatorFacebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-white/80 hover:text-blue-400 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <a
+                href={cfg.creatorFacebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="text-white/80 hover:text-blue-400 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
                   <path d="M22 12a10 10 0 10-11.5 9.9v-7H8.9v-2.9h1.6V9.1c0-1.6 1-2.5 2.4-2.5.7 0 1.4.1 1.4.1v1.6h-.8c-.8 0-1 0-1 1v1.4h1.8l-.3 2.9h-1.5v7A10 10 0 0022 12z" />
                 </svg>
               </a>
             )}
             {cfg.creatorInstagram && (
-              <a href={cfg.creatorInstagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-white/80 hover:text-pink-400 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+              <a
+                href={cfg.creatorInstagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="text-white/80 hover:text-pink-400 transition"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-5 h-5"
+                >
                   <path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm5 6.2A4.8 4.8 0 1016.8 13 4.8 4.8 0 0012 8.2zm6.5-.9a1.2 1.2 0 11-1.2-1.2 1.2 1.2 0 011.2 1.2zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z" />
                 </svg>
               </a>
@@ -814,5 +872,67 @@ export function Footer() {
         )}
       </div>
     </footer>
+  );
+}
+
+export function About() {
+  const { t } = useI18n();
+  const cfg = useSiteConfig();
+  return (
+    <section id="about" className="mx-auto max-w-6xl px-4 py-16 md:py-20">
+      <div className="grid md:grid-cols-2 gap-10 items-center">
+        <div className="relative">
+          <div className="absolute -inset-3 rounded-3xl bg-[#F3E0F0] -rotate-2" />
+          <img
+            src="/necklace.jpg"
+            alt="Crafting beaded jewelry"
+            loading="lazy"
+            className="relative rounded-2xl shadow-xl w-full object-cover aspect-[4/3]"
+          />
+        </div>
+        <div>
+          <p className="text-sm font-bold uppercase tracking-widest text-[var(--primary)]">
+            💜 {t("navAbout")}
+          </p>
+          <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">
+            {t("aboutTitle")}
+          </h2>
+          <p className="mt-4 text-slate-500 dark:text-slate-400 leading-relaxed">
+            {t("aboutText")}
+          </p>
+          <a
+            href={cfg.facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center gap-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary-dark)] px-6 py-3.5 font-bold text-white transition shadow-lg shadow-cyan-500/25"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.026 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+            </svg>
+            {t("followFacebook")}
+          </a>
+          <a
+            href={cfg.instagramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 ml-3 inline-flex items-center gap-2.5 rounded-xl bg-[#C13584] px-6 py-3.5 font-bold text-white hover:bg-[#a0226f] transition shadow-lg shadow-pink-500/25"
+          >
+            {/* Instagram link */}
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="opacity-90"
+            >
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.346 3.608 1.32.975.975 1.258 2.242 1.32 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.345 2.633-1.32 3.608-.975.975-2.242 1.258-3.608 1.32-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.345-3.608-1.32-.975-.975-1.258-2.242-1.32-3.608C2.175 15.747 2.163 15.367 2.163 12s.012-3.584.07-4.85c.062-1.366.345-2.633 1.32-3.608C4.528 2.579 5.795 2.296 7.161 2.234 8.427 2.176 8.807 2.163 12 2.163zm0-2.163C8.741 0 8.332.013 7.052.073 5.771.132 4.675.4 3.7 1.376 2.724 2.352 2.456 3.449 2.397 4.73 2.337 6.01 2.324 6.419 2.324 9.678s.013 3.668.073 4.948c.059 1.281.327 2.378 1.303 3.354.976.976 2.073 1.244 3.354 1.303 1.28.06 1.689.073 4.948.073s3.668-.013 4.948-.073c1.281-.059 2.378-.327 3.354-1.303.976-.976 1.244-2.073 1.303-3.354.06-1.28.073-1.689.073-4.948s-.013-3.668-.073-4.948c-.059-1.281-.327-2.378-1.303-3.354C19.378.4 18.281.132 17 .073 15.72.013 15.311 0 12 0z" />
+              <path d="M12 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a3.999 3.999 0 1 1 0-7.998 3.999 3.999 0 0 1 0 7.998z" />
+              <circle cx="18.406" cy="5.594" r="1.44" />
+            </svg>
+            {t("followInstagram")}
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }

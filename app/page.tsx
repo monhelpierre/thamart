@@ -119,7 +119,9 @@ export default function Home() {
 
   useEffect(() => {
     if (!user) {
-      try { localStorage.removeItem("session"); } catch { }
+      try {
+        localStorage.removeItem("session");
+      } catch {}
       return;
     }
 
@@ -135,15 +137,26 @@ export default function Home() {
         if (!idToken) return;
         await fetch("/api/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ uid: user.uid, displayName: user.displayName, email: user.email, photoURL: user.photoURL }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: user.photoURL,
+          }),
         });
 
         // Check if address prompt should be shown (only once per session)
         if (!sessionStorage.getItem("addressPromptShown")) {
-          const profileRes = await fetch(`/api/users?uid=${encodeURIComponent(user.uid)}`, {
-            headers: { Authorization: `Bearer ${idToken}` },
-          });
+          const profileRes = await fetch(
+            `/api/users?uid=${encodeURIComponent(user.uid)}`,
+            {
+              headers: { Authorization: `Bearer ${idToken}` },
+            },
+          );
           if (profileRes.ok) {
             const profile = await profileRes.json();
             if (!profile?.defaultAddress?.city) {
@@ -164,9 +177,12 @@ export default function Home() {
       try {
         const idToken = await getAuthToken();
         if (!idToken) return;
-        const res = await fetch(`/api/carts?uid=${encodeURIComponent(user.uid)}`, {
-          headers: { Authorization: `Bearer ${idToken}` },
-        });
+        const res = await fetch(
+          `/api/carts?uid=${encodeURIComponent(user.uid)}`,
+          {
+            headers: { Authorization: `Bearer ${idToken}` },
+          },
+        );
         const json = await res.json();
         if (json && json.cart) {
           const local = localStorage.getItem("cart");
@@ -197,7 +213,10 @@ export default function Home() {
         if (!idToken) return;
         await fetch("/api/carts", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
           body: JSON.stringify({ uid: user.uid, cart }),
         });
       } catch (e) {
@@ -240,12 +259,12 @@ export default function Home() {
       setPendingAdd(id);
       return;
     }
-    setCart(c => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+    setCart((c) => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
     onAdded();
   };
 
   const changeQty = (id: string, delta: number) =>
-    setCart(c => {
+    setCart((c) => {
       const next = Math.max(0, (c[id] ?? 0) + delta);
       const copy = { ...c };
       if (next === 0) delete copy[id];
@@ -287,7 +306,9 @@ export default function Home() {
     try {
       localStorage.removeItem("cart");
       localStorage.removeItem("session");
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
@@ -295,7 +316,9 @@ export default function Home() {
       {/* Full-page loading overlay — same style as cart backdrop */}
       <div
         className={`fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300 flex items-center justify-center ${
-          isLoading ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          isLoading
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
       >
         <div className="w-12 h-12 rounded-full border-4 border-white/30 border-t-white animate-spin" />
@@ -305,7 +328,10 @@ export default function Home() {
         cartCount={cartCount}
         user={user}
         onOpenCart={() => setCartOpen(true)}
-        onOpenOrders={() => { setHighlightOrderId(null); setOrdersOpen(true); }}
+        onOpenOrders={() => {
+          setHighlightOrderId(null);
+          setOrdersOpen(true);
+        }}
         onSignIn={() => setGoogleSigninOpen(true)}
         onSignedOut={handleSignedOut}
         authLoading={authLoading}
@@ -370,7 +396,9 @@ export default function Home() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
           {cartCount > 0 && (
-            <span className="absolute top-0 right-1 min-w-4 h-4 px-0.5 rounded-full bg-[var(--accent)] text-[9px] font-bold text-white flex items-center justify-center">{cartCount}</span>
+            <span className="absolute top-0 right-1 min-w-4 h-4 px-0.5 rounded-full bg-[var(--accent)] text-[9px] font-bold text-white flex items-center justify-center">
+              {cartCount}
+            </span>
           )}
           <span className="text-[9px] font-semibold">Carrinho</span>
         </button>
@@ -385,7 +413,10 @@ export default function Home() {
         notes={notes}
         user={user}
         onNotes={setNotes}
-        onClose={() => setCartOpen(false)}
+        onClose={() => {
+          setCartOpen(false);
+          setActiveTab("home");
+        }}
         onChangeQty={changeQty}
         onCheckout={handleCheckout}
         products={products}
@@ -406,7 +437,10 @@ export default function Home() {
         open={ordersOpen}
         user={user}
         highlightOrderId={highlightOrderId}
-        onClose={() => setOrdersOpen(false)}
+        onClose={() => {
+          setOrdersOpen(false);
+          setActiveTab("home");
+        }}
         onReview={handleReview}
       />
 
@@ -460,7 +494,7 @@ export default function Home() {
         onUser={(u) => {
           setUser(u);
           if (pendingAdd) {
-            setCart(c => ({ ...c, [pendingAdd]: (c[pendingAdd] ?? 0) + 1 }));
+            setCart((c) => ({ ...c, [pendingAdd]: (c[pendingAdd] ?? 0) + 1 }));
             setPendingAdd(null);
           }
         }}
