@@ -473,7 +473,7 @@ function CategoriesTab({ idToken }: { idToken: string | null }) {
   );
 }
 
-const EMPTY_SLIDE_FORM = { type: "image" as "image" | "video", src: "", caption: "", label: "", ctaText: "", ctaLink: "", order: 0, ytBranding: false, purpose: "product" as "product" | "ads", duration: "" as "" | number };
+const EMPTY_SLIDE_FORM = { type: "image" as "image" | "video", src: "", caption: "", label: "", ctaText: "", ctaLink: "", order: 0, ytBranding: false, purpose: "product" as "product" | "ads", duration: 20 as "" | number };
 
 function SlidesTab({ idToken }: { idToken: string | null }) {
   const [slides, setSlides] = useState<Slide[]>([]);
@@ -680,10 +680,10 @@ function SlidesTab({ idToken }: { idToken: string | null }) {
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Duração no slide (segundos)</label>
               <input
                 type="number"
-                min={1}
+                min={10}
                 value={form.duration}
                 onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value === "" ? "" : Number(e.target.value) }))}
-                placeholder="20 (padrão)"
+                placeholder="20"
                 className={inputCls}
               />
             </div>
