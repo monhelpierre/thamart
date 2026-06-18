@@ -5,6 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth, getAuthToken } from "@/lib/firebase";
 import { formatBRL } from "@/data/products";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfig";
+import ChatModal from "@/components/ChatModal";
 
 type Tab =
   | "orders"
@@ -13,6 +14,7 @@ type Tab =
   | "analytics"
   | "carts"
   | "email"
+  | "slides"
   | "config";
 
 type OrderStatus =
@@ -63,6 +65,7 @@ interface Product {
   description: { pt: string; fr: string; en: string };
   price: number;
   image: string;
+  category?: string;
   popular?: boolean;
   customizable?: boolean;
 }
@@ -155,9 +158,17 @@ const EMPTY_PRODUCT: Omit<Product, "id"> = {
   description: { pt: "", fr: "", en: "" },
   price: 0,
   image: "",
+  category: "",
   popular: false,
   customizable: false,
 };
+
+const KNOWN_CATEGORIES = [
+  { value: "pulseira", label: "📿 Pulseiras" },
+  { value: "colar", label: "✨ Colares" },
+  { value: "brincos", label: "💎 Brincos" },
+  { value: "tornozeleira", label: "🌊 Tornozeleiras" },
+];
 
 // ── Markdown ↔ HTML converters for the legal content editor ──
 
@@ -202,11 +213,140 @@ function htmlToMarkdown(html: string): string {
     .trim();
 }
 
+/* ── Slides Tab ── */
+interface Slide {
+  id: string;
+  type: "image" | "video";
+  src: string;
+  caption: string;
+  label: string;
+  ctaText: string;
+  ctaLink: string;
+  order: number;
+}
+
+function SlidesTab({ idToken }: { idToken: string | null }) {
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ type: "image" as "image" | "video", src: "", caption: "", label: "", ctaText: "", ctaLink: "", order: 0 });
+  const [saving, setSaving] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch("/api/slides", { headers: { Authorization: `Bearer ${idToken}` } });
+    if (res.ok) setSlides(await res.json());
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addSlide() {
+    if (!form.src.trim()) return;
+    setSaving(true);
+    await fetch("/api/slides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify(form),
+    });
+    setForm({ type: "image", src: "", caption: "", label: "", ctaText: "", ctaLink: "", order: slides.length });
+    await load();
+    setSaving(false);
+  }
+
+  async function deleteSlide(id: string) {
+    if (!confirm("Remover este slide?")) return;
+    await fetch(`/api/slides?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${idToken}` } });
+    setSlides((s) => s.filter((x) => x.id !== id));
+  }
+
+  const inputCls = "w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/30";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Slides do Hero ({slides.length})</h2>
+        <button onClick={load} className="text-sm text-[#9B2D8F] hover:underline">{loading ? "Carregando..." : "↺ Atualizar"}</button>
+      </div>
+
+      {/* Existing slides */}
+      <div className="space-y-3">
+        {slides.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm">
+            <span className="text-2xl shrink-0">{s.type === "video" ? "🎬" : "🖼️"}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{s.label || `Slide ${i + 1}`}</p>
+              <p className="text-xs text-slate-400 truncate">{s.src}</p>
+              {s.caption && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{s.caption}</p>}
+            </div>
+            {s.src.startsWith("http") && s.type === "image" && (
+              <img src={s.src} alt="" className="w-16 h-12 object-cover rounded-lg border border-slate-100 dark:border-slate-700 shrink-0" />
+            )}
+            <button onClick={() => deleteSlide(s.id)} className="text-red-400 hover:text-red-600 text-lg shrink-0">🗑</button>
+          </div>
+        ))}
+        {slides.length === 0 && !loading && (
+          <div className="text-center py-10 text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700">
+            Nenhum slide ainda — adicione o primeiro abaixo
+          </div>
+        )}
+      </div>
+
+      {/* Add slide form */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 space-y-4">
+        <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm">+ Novo slide</h3>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Tipo</label>
+            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as "image" | "video" }))} className={inputCls}>
+              <option value="image">🖼️ Imagem</option>
+              <option value="video">🎬 Vídeo (YouTube ou MP4)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Ordem</label>
+            <input type="number" min={0} value={form.order} onChange={(e) => setForm((f) => ({ ...f, order: Number(e.target.value) }))} className={inputCls} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">URL da imagem / vídeo *</label>
+          <input type="text" value={form.src} onChange={(e) => setForm((f) => ({ ...f, src: e.target.value }))} placeholder={form.type === "video" ? "https://youtube.com/watch?v=... ou .mp4" : "https://res.cloudinary.com/..."} className={inputCls} />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Rótulo (ex: Produto da semana)</label>
+            <input type="text" value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Legenda</label>
+            <input type="text" value={form.caption} onChange={(e) => setForm((f) => ({ ...f, caption: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Texto do botão CTA</label>
+            <input type="text" value={form.ctaText} onChange={(e) => setForm((f) => ({ ...f, ctaText: e.target.value }))} placeholder="Ver produto" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Link do CTA</label>
+            <input type="text" value={form.ctaLink} onChange={(e) => setForm((f) => ({ ...f, ctaLink: e.target.value }))} placeholder="#menu ou /produto/123" className={inputCls} />
+          </div>
+        </div>
+        <button
+          onClick={addSlide}
+          disabled={saving || !form.src.trim()}
+          className="w-full rounded-xl bg-[#9B2D8F] hover:bg-[#7A2270] text-white font-bold py-3 transition disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : "Adicionar slide"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<Tab>("orders");
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<{ uid: string; displayName: string; email: string; photoURL: string | null } | null>(null);
 
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
@@ -216,6 +356,7 @@ export default function AdminPage() {
     status: OrderStatus;
     trackingCode: string;
   } | null>(null);
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
 
   // Users
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -309,6 +450,7 @@ export default function AdminPage() {
       }
       const token = await u.getIdToken();
       setIdToken(token);
+      setAdminUser({ uid: u.uid, displayName: u.displayName ?? "Admin", email: u.email ?? "", photoURL: u.photoURL });
       // verify admin via a quick probe
       const res = await fetch("/api/admin/orders", {
         headers: { Authorization: `Bearer ${token}` },
@@ -916,6 +1058,7 @@ export default function AdminPage() {
     { key: "products", label: "Produtos", icon: "💎" },
     { key: "carts", label: "Carrinhos", icon: "🛒" },
     { key: "email", label: "E-mails", icon: "✉️" },
+    { key: "slides", label: "Slides", icon: "🖼️" },
     { key: "analytics", label: "Analytics", icon: "📊" },
     { key: "config", label: "Config", icon: "⚙️" },
   ];
@@ -1132,18 +1275,26 @@ export default function AdminPage() {
                                 </div>
                               </div>
                             ) : (
-                              <button
-                                onClick={() =>
-                                  setEditingOrder({
-                                    id: order.id,
-                                    status: order.status,
-                                    trackingCode: order.trackingCode ?? "",
-                                  })
-                                }
-                                className="text-xs text-[var(--secondary)] hover:underline"
-                              >
-                                ✏️ Editar
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() =>
+                                    setEditingOrder({
+                                      id: order.id,
+                                      status: order.status,
+                                      trackingCode: order.trackingCode ?? "",
+                                    })
+                                  }
+                                  className="text-xs text-[var(--secondary)] hover:underline"
+                                >
+                                  ✏️ Editar
+                                </button>
+                                <button
+                                  onClick={() => setChatOrderId(order.id)}
+                                  className="text-xs text-[#9B2D8F] hover:underline"
+                                >
+                                  💬 Chat
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -1377,9 +1528,16 @@ export default function AdminPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-bold text-[var(--primary)]">
-                      {formatBRL(p.price)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-[var(--primary)]">
+                        {formatBRL(p.price)}
+                      </p>
+                      {p.category && (
+                        <span className="text-[9px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">
+                          {p.category}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button
@@ -1744,6 +1902,11 @@ export default function AdminPage() {
         )}
 
         {/* ── ANALYTICS ── */}
+        {/* ── SLIDES ── */}
+        {tab === "slides" && (
+          <SlidesTab idToken={idToken} />
+        )}
+
         {tab === "analytics" && (
           <div className="space-y-6">
             {/* Stat cards */}
@@ -2271,6 +2434,16 @@ export default function AdminPage() {
         )}
       </div>
 
+      {/* ── Admin Chat ── */}
+      <ChatModal
+        open={chatOrderId !== null}
+        orderId={chatOrderId ?? ""}
+        orderShortId={chatOrderId?.slice(0, 8).toUpperCase()}
+        user={adminUser}
+        isAdmin
+        onClose={() => setChatOrderId(null)}
+      />
+
       {/* ── Product Modal ── */}
       {productModal && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
@@ -2404,6 +2577,34 @@ export default function AdminPage() {
                     </span>
                   </label>
                 </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Categoria
+                </label>
+                <select
+                  value={productForm.category ?? ""}
+                  onChange={(e) =>
+                    setProductForm((f) => ({ ...f, category: e.target.value }))
+                  }
+                  className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                >
+                  <option value="">— Sem categoria —</option>
+                  {KNOWN_CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                  {/* Show current value as option if it's not in the known list */}
+                  {productForm.category &&
+                    !KNOWN_CATEGORIES.find((c) => c.value === productForm.category) && (
+                      <option value={productForm.category}>
+                        {productForm.category}
+                      </option>
+                    )}
+                </select>
               </div>
 
               {/* Names */}

@@ -6,6 +6,7 @@ import { getAuthToken } from "@/lib/firebase";
 import { formatBRL } from "@/data/products";
 import { formatDeliveryRange } from "@/lib/shipping";
 import type { AppUser } from "@/lib/firebase";
+import ChatModal from "@/components/ChatModal";
 
 type OrderStatus = "pending_payment" | "paid" | "in_production" | "shipped" | "delivered";
 
@@ -48,6 +49,7 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [chatOrderId, setChatOrderId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!open || !user) return;
@@ -96,6 +98,7 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
     if (!open) return null;
 
     return (
+        <>
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative w-full max-w-lg max-h-[90vh] rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col">
@@ -194,7 +197,18 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                         {order.trackingCode && (
                                             <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 px-3 py-2">
                                                 <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">{t("trackingCode")}</p>
-                                                <p className="font-mono text-sm text-blue-800 dark:text-blue-300">{order.trackingCode}</p>
+                                                {/^https?:\/\//.test(order.trackingCode) ? (
+                                                    <a
+                                                        href={order.trackingCode}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm font-semibold text-blue-700 dark:text-blue-300 hover:underline break-all"
+                                                    >
+                                                        🚚 Rastrear entrega →
+                                                    </a>
+                                                ) : (
+                                                    <p className="font-mono text-sm text-blue-800 dark:text-blue-300 break-all">{order.trackingCode}</p>
+                                                )}
                                             </div>
                                         )}
 
@@ -219,6 +233,16 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                             </p>
                                         )}
 
+                                        {/* Chat with ThamArt */}
+                                        {["paid", "in_production", "shipped", "delivered"].includes(order.status) && (
+                                            <button
+                                                onClick={() => setChatOrderId(order.id)}
+                                                className="w-full rounded-xl border border-[#9B2D8F]/30 bg-[#F3E0F0] dark:bg-[#9B2D8F]/10 hover:bg-[#E9CCE5] dark:hover:bg-[#9B2D8F]/20 px-3 py-2.5 text-sm font-semibold text-[#9B2D8F] transition flex items-center gap-2"
+                                            >
+                                                💬 Falar com a ThamArt sobre este pedido
+                                            </button>
+                                        )}
+
                                         {order.status === "delivered" && (
                                             <div className="space-y-1.5">
                                                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("leaveReview")}</p>
@@ -241,5 +265,13 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                 </div>
             </div>
         </div>
+        <ChatModal
+            open={chatOrderId !== null}
+            orderId={chatOrderId ?? ""}
+            orderShortId={chatOrderId?.slice(0, 8).toUpperCase()}
+            user={user}
+            onClose={() => setChatOrderId(null)}
+        />
+        </>
     );
 }
