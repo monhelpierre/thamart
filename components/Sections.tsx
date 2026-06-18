@@ -1,7 +1,145 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useI18n } from "@/lib/i18n";
 import { formatBRL, type Product } from "@/data/products";
 import { useSiteConfig } from "@/lib/siteConfig";
+
+/* ---------------- Hero Slideshow ---------------- */
+interface Slide {
+  id: string;
+  type: "image" | "video";
+  src: string;
+  caption?: string;
+  label?: string;
+  ctaText?: string;
+  ctaLink?: string;
+}
+
+function HeroSlideshow() {
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [current, setCurrent] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/slides")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data) && data.length) setSlides(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return;
+    const t = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 5000);
+    return () => clearInterval(t);
+  }, [slides.length, paused]);
+
+  const slide = slides[current];
+
+  function renderMedia() {
+    if (!slide) {
+      return (
+        <img
+          src="/bracelet-flower.jpg"
+          alt="ThamArt beaded bracelets"
+          className="w-full h-full object-cover"
+        />
+      );
+    }
+    if (slide.type === "video") {
+      const ytMatch = slide.src.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?/]+)/);
+      if (ytMatch) {
+        return (
+          <iframe
+            src={`https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&controls=0`}
+            className="w-full h-full"
+            allow="autoplay; encrypted-media"
+            style={{ border: 0 }}
+            title="slide"
+          />
+        );
+      }
+      return (
+        <video
+          src={slide.src}
+          className="w-full h-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
+      );
+    }
+    return (
+      <img
+        src={slide.src}
+        alt={slide.caption ?? "ThamArt"}
+        className="w-full h-full object-cover transition-opacity duration-700"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="absolute inset-0">{renderMedia()}</div>
+
+      {/* Caption overlay */}
+      {slide && (slide.caption || slide.label || slide.ctaText) && (
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-4">
+          {slide.label && (
+            <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block mb-0.5">
+              {slide.label}
+            </span>
+          )}
+          {slide.caption && (
+            <p className="text-white font-semibold text-sm leading-snug">{slide.caption}</p>
+          )}
+          {slide.ctaText && slide.ctaLink && (
+            <a
+              href={slide.ctaLink}
+              className="mt-2 inline-block text-xs text-white bg-[#9B2D8F] hover:bg-[#7A2270] px-3 py-1.5 rounded-full transition font-bold"
+            >
+              {slide.ctaText}
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Navigation */}
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={() => setCurrent((c) => (c - 1 + slides.length) % slides.length)}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full text-white flex items-center justify-center text-xl leading-none transition"
+          >
+            ‹
+          </button>
+          <button
+            onClick={() => setCurrent((c) => (c + 1) % slides.length)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/40 hover:bg-black/60 rounded-full text-white flex items-center justify-center text-xl leading-none transition"
+          >
+            ›
+          </button>
+          <div className="absolute bottom-3 right-4 flex gap-1.5">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={`rounded-full transition-all ${
+                  i === current
+                    ? "w-4 h-1.5 bg-white"
+                    : "w-1.5 h-1.5 bg-white/50 hover:bg-white/80"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /* ---------------- Hero ---------------- */
 export function Hero() {
@@ -59,12 +197,9 @@ export function Hero() {
         </div>
         <div className="relative">
           <div className="absolute -inset-3 rounded-3xl bg-white/10 backdrop-blur-sm rotate-2" />
-          <img
-            src="/bracelet-flower.jpg"
-            alt="ThamArt beaded bracelets"
-            className="relative rounded-2xl shadow-2xl w-full object-cover aspect-[4/3]"
-          />
-          {/* Pix payment badge removed from hero; payments are handled in checkout only */}
+          <div className="relative">
+            <HeroSlideshow />
+          </div>
         </div>
       </div>
     </section>
@@ -76,6 +211,7 @@ interface MenuProps {
   onAdd: (id: string, onAdded: () => void) => void;
   onProductClick?: (product: Product) => void;
   isLoading?: boolean;
+  selectedCategory?: string | null;
 }
 
 export function Menu({
@@ -83,6 +219,7 @@ export function Menu({
   onAdd,
   onProductClick,
   isLoading = false,
+  selectedCategory = null,
 }: MenuProps) {
   const { t, lang } = useI18n();
   const [justAdded, setJustAdded] = useState<string | null>(null);
@@ -129,9 +266,33 @@ export function Menu({
     );
   }, [products]);
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(6);
+  // Track grid column count to load exactly one row at a time
+  const colsRef = useRef(2);
+  useEffect(() => {
+    function updateCols() {
+      const w = window.innerWidth;
+      if (w >= 1280) colsRef.current = 5;
+      else if (w >= 1024) colsRef.current = 4;
+      else if (w >= 768) colsRef.current = 3;
+      else colsRef.current = 2;
+    }
+    updateCols();
+    window.addEventListener("resize", updateCols);
+    return () => window.removeEventListener("resize", updateCols);
+  }, []);
+
+  // Infinite scroll
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === "undefined") return 2;
+    const w = window.innerWidth;
+    if (w >= 1280) return 5;
+    if (w >= 1024) return 4;
+    if (w >= 768) return 3;
+    return 2;
+  });
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false); // avoids stale closure in observer
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   const handleAdd = (id: string) => {
     onAdd(id, () => {
@@ -140,37 +301,55 @@ export function Menu({
     });
   };
 
-  // Reset page when filters/search change
-  useEffect(() => setPage(1), [query, minPrice, maxPrice, pageSize, products]);
+  // Reset when filters/search/products change
+  useEffect(() => {
+    setVisible(colsRef.current);
+    setLoadingMore(false);
+    loadingMoreRef.current = false;
+  }, [query, minPrice, maxPrice, products, selectedCategory]);
+
+  // Ref callback: (re)attaches the IntersectionObserver whenever the sentinel mounts.
+  // Using a callback ref instead of useEffect + useRef so the observer is set up even
+  // when the sentinel first renders after the initial load (products arrive async).
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+    if (!node) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMoreRef.current) {
+          loadingMoreRef.current = true;
+          setLoadingMore(true);
+          setTimeout(() => {
+            setVisible((v) => v + colsRef.current);
+            setLoadingMore(false);
+            loadingMoreRef.current = false;
+          }, 600);
+        }
+      },
+      { rootMargin: "200px 0px", threshold: 0 }
+    );
+    obs.observe(node);
+    observerRef.current = obs;
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const min = minPrice;
-    const max = maxPrice;
-
     return products.filter((p) => {
-      // search by localized name
-      const name = (
-        p.name[lang] ??
-        Object.values(p.name)[0] ??
-        ""
-      ).toLowerCase();
-      const matchesQuery = q === "" || name.includes(q);
-
+      const name = (p.name[lang] ?? Object.values(p.name)[0] ?? "").toLowerCase();
       const price = Math.floor(Number(p.price ?? 0));
-      const matchesMin = min === null ? true : price >= min;
-      const matchesMax = max === null ? true : price <= max;
-
-      return matchesQuery && matchesMin && matchesMax;
+      return (
+        (q === "" || name.includes(q)) &&
+        (minPrice === null || price >= minPrice) &&
+        (maxPrice === null || price <= maxPrice) &&
+        (selectedCategory === null || p.category === selectedCategory)
+      );
     });
-  }, [products, query, minPrice, maxPrice, lang]);
+  }, [products, query, minPrice, maxPrice, lang, selectedCategory]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageIndex = Math.min(Math.max(1, page), totalPages);
-  const paginated = filtered.slice(
-    (pageIndex - 1) * pageSize,
-    pageIndex * pageSize,
-  );
+  const visibleProducts = filtered.slice(0, visible);
 
   return (
     <section id="menu" className="mx-auto max-w-6xl px-4 py-16 md:py-20">
@@ -181,185 +360,156 @@ export function Menu({
         <h2 className="mt-2 text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">
           {t("menuTitle")}
         </h2>
-        <p className="mt-3 text-slate-500 dark:text-slate-400">
-          {t("menuSubtitle")}
-        </p>
+        <p className="mt-3 text-slate-500 dark:text-slate-400">{t("menuSubtitle")}</p>
       </div>
 
-      <div className="mt-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3 w-full max-w-xl">
+      {/* Filters */}
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("searchPlaceholder") || "Buscar por nome..."}
+          className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/30"
+        />
+        <div className="flex gap-2 shrink-0">
           <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("searchPlaceholder") || "Search by name..."}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min="1"
-            step="1"
-            placeholder={t("minPrice") || "Min"}
+            type="number" min="1" step="1"
+            placeholder={t("minPrice") || "Mín R$"}
             value={minPrice ?? ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") return setMinPrice(null);
-              const v = Math.floor(Number(raw));
-              setMinPrice(isNaN(v) ? null : Math.max(1, v));
-            }}
-            className="w-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
+            onChange={(e) => { const v = Math.floor(Number(e.target.value)); setMinPrice(e.target.value === "" ? null : isNaN(v) ? null : Math.max(1, v)); }}
+            className="w-full sm:w-28 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
           />
           <input
-            type="number"
-            min="1"
-            step="1"
-            placeholder={t("maxPrice") || "Max"}
+            type="number" min="1" step="1"
+            placeholder={t("maxPrice") || "Máx R$"}
             value={maxPrice ?? ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") return setMaxPrice(null);
-              const v = Math.floor(Number(raw));
-              setMaxPrice(
-                isNaN(v) ? null : Math.min(maxAvailable, Math.max(1, v)),
-              );
-            }}
-            className="w-24 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
+            onChange={(e) => { const v = Math.floor(Number(e.target.value)); setMaxPrice(e.target.value === "" ? null : isNaN(v) ? null : Math.min(maxAvailable, Math.max(1, v))); }}
+            className="w-full sm:w-28 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
           />
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm"
-          >
-            <option value={6}>6 / page</option>
-            <option value={9}>9 / page</option>
-            <option value={12}>12 / page</option>
-          </select>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <article
-              key={i}
-              className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden flex flex-col"
-            >
-              <div className="relative h-52 bg-slate-100">
-                <div className="absolute top-3 left-3 w-12 h-5 rounded-full bg-white/30 animate-pulse" />
-                <div className="absolute bottom-3 right-3 w-14 h-5 rounded-full bg-white/20 animate-pulse" />
-                <div className="w-full h-full bg-transparent animate-pulse" />
-              </div>
-              <div className="p-5 flex flex-col flex-1">
-                <div className="h-4 bg-slate-200 rounded w-3/4 mb-3 animate-pulse" />
-                <div className="h-3 bg-slate-100 rounded w-full mb-2 animate-pulse" />
-                <div className="h-3 bg-slate-100 rounded w-5/6 mb-4 animate-pulse" />
-                <div className="mt-auto flex items-center justify-between">
-                  <div className="h-6 w-24 bg-slate-200 rounded animate-pulse" />
-                  <div className="h-9 w-28 bg-slate-200 rounded-lg animate-pulse" />
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <article key={i} className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col animate-pulse">
+              <div className="h-40 bg-slate-100 dark:bg-slate-700" />
+              <div className="p-3 space-y-2">
+                <div className="h-3.5 bg-slate-200 dark:bg-slate-600 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-full" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-5/6" />
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="h-5 w-16 bg-slate-200 dark:bg-slate-600 rounded" />
+                  <div className="h-8 w-20 bg-slate-200 dark:bg-slate-600 rounded-lg" />
                 </div>
               </div>
             </article>
           ))}
         </div>
       ) : (
-        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paginated.map((p) => (
-            <article
-              key={p.id}
-              className="group rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden flex flex-col"
-            >
-              <div
-                className="relative h-52 overflow-hidden bg-slate-50 cursor-pointer"
-                onClick={() => onProductClick?.(p)}
-                title={t("productDetails")}
+        <>
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+            {visibleProducts.map((p) => (
+              <article
+                key={p.id}
+                className="group rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden flex flex-col"
               >
-                <img
-                  src={p.image}
-                  alt={p.name[lang]}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                {p.popular && (
-                  <span className="absolute top-3 left-3 rounded-full bg-[var(--primary)] px-3 py-1 text-[11px] font-bold text-white shadow">
-                    ⭐ {t("popular")}
-                  </span>
-                )}
-                {p.customizable && (
-                  <span className="absolute bottom-3 right-3 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold text-[var(--secondary)] shadow">
-                    ✏️ {t("custom")}
-                  </span>
-                )}
-                {onProductClick && (
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full px-3 py-1 text-xs font-semibold text-slate-700 shadow">
-                      🔍 {t("productDetails")}
+                <div
+                  className="relative h-40 overflow-hidden bg-slate-50 cursor-pointer"
+                  onClick={() => onProductClick?.(p)}
+                  title={t("productDetails")}
+                >
+                  <img
+                    src={p.image}
+                    alt={p.name[lang]}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  {p.popular && (
+                    <span className="absolute top-2 left-2 rounded-full bg-[var(--primary)] px-2 py-0.5 text-[10px] font-bold text-white shadow">
+                      ⭐ {t("popular")}
                     </span>
-                  </div>
-                )}
-              </div>
-              <div className="p-5 flex flex-col flex-1">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                  {p.name[lang]}
-                </h3>
-                <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed flex-1">
-                  {p.description[lang]}
-                </p>
-                {ratings[p.id] ? (
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span className="text-amber-400 text-sm">
-                      {"★".repeat(Math.round(ratings[p.id].avg))}
-                      {"☆".repeat(5 - Math.round(ratings[p.id].avg))}
+                  )}
+                  {p.customizable && (
+                    <span className="absolute bottom-2 right-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-[var(--secondary)] shadow">
+                      ✏️ {t("custom")}
                     </span>
-                    <span className="text-xs text-slate-500">
-                      {ratings[p.id].avg} ({ratings[p.id].count})
-                    </span>
-                  </div>
-                ) : null}
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xl font-extrabold text-[var(--primary)]">
-                    {formatBRL(p.price)}
-                  </span>
-                  <button
-                    onClick={() => handleAdd(p.id)}
-                    className={`rounded-xl px-4 py-2.5 text-sm font-bold transition shadow-md ${
-                      justAdded === p.id
-                        ? "bg-emerald-500 text-white shadow-emerald-500/25"
-                        : "bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white shadow-purple-500/25"
-                    }`}
-                  >
-                    {justAdded === p.id ? t("added") : `+ ${t("addToCart")}`}
-                  </button>
+                  )}
+                  {onProductClick && (
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full px-2 py-1 text-[10px] font-semibold text-slate-700 shadow">
+                        🔍 {t("productDetails")}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+                <div className="p-3 flex flex-col flex-1">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
+                    {p.name[lang]}
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed flex-1 line-clamp-2">
+                    {p.description[lang]}
+                  </p>
+                  {ratings[p.id] && (
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <span className="text-amber-400 text-xs">
+                        {"★".repeat(Math.round(ratings[p.id].avg))}
+                        {"☆".repeat(5 - Math.round(ratings[p.id].avg))}
+                      </span>
+                      <span className="text-[10px] text-slate-500">({ratings[p.id].count})</span>
+                    </div>
+                  )}
+                  <div className="mt-2.5 flex items-center justify-between gap-1.5">
+                    <span className="text-base font-extrabold text-[var(--primary)] shrink-0">
+                      {formatBRL(p.price)}
+                    </span>
+                    <button
+                      onClick={() => handleAdd(p.id)}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition shadow-sm shrink-0 ${
+                        justAdded === p.id
+                          ? "bg-emerald-500 text-white"
+                          : "bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white"
+                      }`}
+                    >
+                      {justAdded === p.id ? "✓" : `+ ${t("addToCart")}`}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+
+            {/* Skeleton cards shown inside the grid while loading more */}
+            {loadingMore && Array.from({ length: Math.min(colsRef.current, Math.max(0, filtered.length - visible)) }).map((_, i) => (
+              <article key={`skel-${i}`} className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col animate-pulse">
+                <div className="h-40 bg-slate-100 dark:bg-slate-700" />
+                <div className="p-3 space-y-2">
+                  <div className="h-3.5 bg-slate-200 dark:bg-slate-600 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-full" />
+                  <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-5/6" />
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <div className="h-5 w-16 bg-slate-200 dark:bg-slate-600 rounded" />
+                    <div className="h-8 w-20 bg-slate-200 dark:bg-slate-600 rounded-lg" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* key={visible} forces a fresh DOM node + fresh observer after each load
+              so the observer fires again even if the sentinel is still in view */}
+          {visible < filtered.length && !loadingMore && (
+            <div key={visible} ref={sentinelRef} className="h-px" aria-hidden />
+          )}
+
+          {filtered.length === 0 && !isLoading && (
+            <div className="mt-12 text-center text-slate-400">
+              <p className="text-3xl mb-2">🔍</p>
+              <p>Nenhum produto encontrado</p>
+            </div>
+          )}
+        </>
       )}
-
-      <div className="mt-8 flex items-center justify-center gap-3">
-        <button
-          onClick={() => setPage((s) => Math.max(1, s - 1))}
-          disabled={pageIndex <= 1}
-          className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40"
-        >
-          « {t("prev") || "Prev"}
-        </button>
-
-        <div className="text-sm text-slate-200">
-          {t("page") || "Page"} {pageIndex} / {totalPages}
-        </div>
-
-        <button
-          onClick={() => setPage((s) => Math.min(totalPages, s + 1))}
-          disabled={pageIndex >= totalPages}
-          className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40"
-        >
-          {t("next") || "Next"} »
-        </button>
-      </div>
     </section>
   );
 }
@@ -490,6 +640,69 @@ export function About() {
         </div>
       </div>
     </section>
+  );
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  pulseira: "📿 Pulseiras",
+  colar: "✨ Colares",
+  brincos: "💎 Brincos",
+  tornozeleira: "🌊 Tornozeleiras",
+};
+
+export function CategoryBar({
+  products,
+  selected,
+  onSelect,
+}: {
+  products: Product[];
+  selected: string | null;
+  onSelect: (cat: string | null) => void;
+}) {
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    products.forEach((p) => {
+      if (p.category && !seen.has(p.category)) {
+        seen.add(p.category);
+        out.push(p.category);
+      }
+    });
+    return out;
+  }, [products]);
+
+  if (categories.length === 0) return null;
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+      <div className="mx-auto max-w-6xl px-4 py-3">
+        <div className="flex gap-2 overflow-x-auto scrollbar-none">
+          <button
+            onClick={() => onSelect(null)}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+              selected === null
+                ? "bg-[var(--primary)] text-white"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            🛍️ Todos
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => onSelect(selected === cat ? null : cat)}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                selected === cat
+                  ? "bg-[var(--primary)] text-white"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+              }`}
+            >
+              {CATEGORY_LABELS[cat] ?? cat}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
