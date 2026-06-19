@@ -27,7 +27,7 @@ try {
 
 const ADMIN_EMAILS =
   process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim()) || [];
-const ADMIN_PATHS = ["/api/orders", "/api/admin"]; // Add any admin‑only endpoints
+const ADMIN_PATHS = ["/api/admin"]; // /api/orders handles its own ownership check per-request
 
 function withAuth(
   handler: (
