@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, getAuthToken } from "@/lib/firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { auth, db, getAuthToken } from "@/lib/firebase";
 import { formatBRL } from "@/data/products";
 import { DEFAULT_CONFIG, type SiteConfig } from "@/lib/siteConfig";
 import ChatModal from "@/components/ChatModal";
@@ -782,6 +783,7 @@ function SlidesTab({ idToken }: { idToken: string | null }) {
 export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [chatBadges, setChatBadges] = useState<Record<string, { unreadAdmin: number; hasUserImage: boolean }>>({});
   const [tab, setTab] = useState<Tab>("orders");
   const [idToken, setIdToken] = useState<string | null>(null);
   const [adminUser, setAdminUser] = useState<{ uid: string; displayName: string; email: string; photoURL: string | null } | null>(null);
@@ -932,6 +934,21 @@ export default function AdminPage() {
       },
     });
   }
+
+  // Realtime badge listener: orders with unread user messages
+  useEffect(() => {
+    if (!isAdmin) return;
+    const q = query(collection(db, "chats"), where("unreadAdmin", ">", 0));
+    const unsub = onSnapshot(q, (snap) => {
+      const map: Record<string, { unreadAdmin: number; hasUserImage: boolean }> = {};
+      snap.docs.forEach((doc) => {
+        const d = doc.data();
+        map[doc.id] = { unreadAdmin: d.unreadAdmin ?? 0, hasUserImage: d.hasUserImage ?? false };
+      });
+      setChatBadges(map);
+    });
+    return unsub;
+  }, [isAdmin]);
 
   // ---------- Orders ----------
   async function loadOrders() {
@@ -1736,12 +1753,19 @@ export default function AdminPage() {
                                 >
                                   ✏️ Editar
                                 </button>
-                                <button
-                                  onClick={() => setChatOrderId(order.id)}
-                                  className="text-xs text-[#9B2D8F] hover:underline"
-                                >
-                                  💬 Chat
-                                </button>
+                                {order.status !== "pending_payment" && (
+                                  <button
+                                    onClick={() => setChatOrderId(order.id)}
+                                    className="relative text-xs text-[#9B2D8F] hover:underline inline-flex items-center gap-1"
+                                  >
+                                    💬 Chat
+                                    {chatBadges[order.id] && (
+                                      <span className="inline-flex items-center gap-0.5 min-w-[18px] h-[16px] rounded-full bg-red-500 text-white text-[8px] font-bold px-1 leading-none">
+                                        {chatBadges[order.id].hasUserImage ? "📷" : ""}{chatBadges[order.id].unreadAdmin}
+                                      </span>
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             )}
                           </td>

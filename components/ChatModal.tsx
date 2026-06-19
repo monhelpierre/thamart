@@ -9,7 +9,8 @@ interface Message {
     uid: string;
     userName: string;
     role: "user" | "admin";
-    text: string;
+    text?: string;
+    imageUrl?: string;
     createdAt: string;
 }
 
@@ -26,13 +27,15 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const fileRef = useRef<HTMLInputElement>(null);
 
+    // Realtime messages listener
     useEffect(() => {
         if (!open || !orderId) return;
         setMessages([]);
-
         const q = query(
             collection(db, "chats", orderId, "messages"),
             orderBy("createdAt", "asc")
@@ -43,6 +46,17 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
         return unsub;
     }, [open, orderId]);
 
+    // Mark messages as read whenever the modal opens
+    useEffect(() => {
+        if (!open || !orderId || !user) return;
+        getAuthToken().then((token) => {
+            if (!token) return;
+            fetch(`/api/chat?orderId=${encodeURIComponent(orderId)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            }).catch(() => {});
+        });
+    }, [open, orderId, user]);
+
     useEffect(() => {
         if (open) setTimeout(() => inputRef.current?.focus(), 100);
     }, [open]);
@@ -51,25 +65,46 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    async function send() {
+    async function send(imageUrl?: string) {
         const text = input.trim();
-        if (!text || sending || !user) return;
+        if ((!text && !imageUrl) || sending || !user) return;
         setSending(true);
-        setInput("");
+        if (!imageUrl) setInput("");
         try {
             const idToken = await getAuthToken();
             await fetch("/api/chat", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${idToken}`,
-                },
-                body: JSON.stringify({ orderId, text }),
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                body: JSON.stringify({ orderId, text: text || undefined, imageUrl }),
             });
         } catch (e) {
             console.error("send message error", e);
         } finally {
             setSending(false);
+        }
+    }
+
+    async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+        e.target.value = "";
+        setUploadingImage(true);
+        try {
+            const idToken = await getAuthToken();
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch("/api/chat/upload", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${idToken}` },
+                body: fd,
+            });
+            if (!res.ok) throw new Error("upload failed");
+            const { url } = await res.json();
+            await send(url);
+        } catch (e) {
+            console.error("image upload error", e);
+        } finally {
+            setUploadingImage(false);
         }
     }
 
@@ -114,10 +149,9 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
                         return (
                             <div key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                                 <div
-                                    className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                                        mine
-                                            ? "bg-[#9B2D8F] text-white rounded-br-sm"
-                                            : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
+                                    className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${mine
+                                        ? "bg-[#9B2D8F] text-white rounded-br-sm"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-sm"
                                     }`}
                                 >
                                     {!mine && (
@@ -125,7 +159,16 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
                                             {msg.role === "admin" ? "ThamArt" : msg.userName}
                                         </p>
                                     )}
-                                    <p>{msg.text}</p>
+                                    {msg.imageUrl && (
+                                        <a href={msg.imageUrl} target="_blank" rel="noopener noreferrer">
+                                            <img
+                                                src={msg.imageUrl}
+                                                alt="imagem"
+                                                className="rounded-xl max-w-[220px] mb-1.5 cursor-pointer hover:opacity-90 transition"
+                                            />
+                                        </a>
+                                    )}
+                                    {msg.text && <p>{msg.text}</p>}
                                     <p className={`text-[9px] mt-1 ${mine ? "text-white/60" : "text-slate-400"} text-right`}>
                                         {new Date(msg.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                                     </p>
@@ -137,7 +180,25 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
                 </div>
 
                 {/* Input */}
-                <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+                <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex gap-2 items-center">
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImagePick}
+                    />
+                    <button
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploadingImage || sending}
+                        title="Enviar imagem"
+                        className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 flex items-center justify-center text-base disabled:opacity-40 transition"
+                    >
+                        {uploadingImage ? (
+                            <span className="animate-spin text-xs">⏳</span>
+                        ) : "📷"}
+                    </button>
                     <input
                         ref={inputRef}
                         type="text"
@@ -149,7 +210,7 @@ export default function ChatModal({ open, orderId, orderShortId, user, isAdmin =
                         className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#9B2D8F]/40 focus:border-[#9B2D8F]"
                     />
                     <button
-                        onClick={send}
+                        onClick={() => send()}
                         disabled={!input.trim() || sending}
                         className="rounded-xl bg-[#9B2D8F] hover:bg-[#7A2270] disabled:opacity-50 text-white px-4 py-2 font-bold transition"
                     >
