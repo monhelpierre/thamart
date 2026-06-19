@@ -36,6 +36,7 @@ interface Props {
     open: boolean;
     user: AppUser | null;
     highlightOrderId?: string | null;
+    unreadByOrder?: Record<string, number>;
     onClose: () => void;
     onReview: (orderId: string, productId: string) => void;
 }
@@ -44,7 +45,7 @@ const STATUS_ORDER: OrderStatus[] = [
     "pending_payment", "paid", "in_production", "shipped", "delivered",
 ];
 
-export default function OrderTrackerModal({ open, user, highlightOrderId, onClose, onReview }: Props) {
+export default function OrderTrackerModal({ open, user, highlightOrderId, unreadByOrder = {}, onClose, onReview }: Props) {
     const { t, lang } = useI18n();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
@@ -138,13 +139,20 @@ export default function OrderTrackerModal({ open, user, highlightOrderId, onClos
                                     className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition text-left"
                                     onClick={() => setExpandedId(isExpanded ? null : order.id)}
                                 >
-                                    <div>
-                                        <p className="text-xs font-mono text-slate-400">
-                                            {t("orderNumber")}{order.id.substring(0, 8).toUpperCase()}
-                                        </p>
-                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                                            {statusIcon[order.status]} {t(statusKey[order.status])}
-                                        </p>
+                                    <div className="flex items-center gap-2">
+                                        <div>
+                                            <p className="text-xs font-mono text-slate-400">
+                                                {t("orderNumber")}{order.id.substring(0, 8).toUpperCase()}
+                                            </p>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                                                {statusIcon[order.status]} {t(statusKey[order.status])}
+                                            </p>
+                                        </div>
+                                        {(unreadByOrder[order.id] ?? 0) > 0 && (
+                                            <span className="flex-shrink-0 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1">
+                                                {unreadByOrder[order.id] > 9 ? "9+" : unreadByOrder[order.id]}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs text-slate-400">{date}</p>

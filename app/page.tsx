@@ -40,6 +40,7 @@ export default function Home() {
   // Order tracking
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [highlightOrderId, setHighlightOrderId] = useState<string | null>(null);
+  const [unreadByOrder, setUnreadByOrder] = useState<Record<string, number>>({});
 
   // Review
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -120,6 +121,21 @@ export default function Home() {
     });
     return unsub;
   }, []);
+
+  // Realtime listener: track unread messages per order (admin → user direction)
+  useEffect(() => {
+    if (!user) { setUnreadByOrder({}); return; }
+    const q = query(collection(db, "chats"), where("userId", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      const map: Record<string, number> = {};
+      snap.docs.forEach((doc) => {
+        const n = (doc.data().unreadUser ?? 0) as number;
+        if (n > 0) map[doc.id] = n;
+      });
+      setUnreadByOrder(map);
+    });
+    return unsub;
+  }, [user?.uid]);
 
   useEffect(() => {
     if (!user) {
@@ -386,9 +402,16 @@ export default function Home() {
             onClick={() => { setHighlightOrderId(null); setOrdersOpen(true); }}
             className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${activeNavItem === "orders" ? "text-[var(--primary)]" : "text-slate-400 dark:text-slate-500"}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+            <div className="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              {Object.keys(unreadByOrder).length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5 leading-none">
+                  {Object.values(unreadByOrder).reduce((a, b) => a + b, 0) > 9 ? "9+" : Object.values(unreadByOrder).reduce((a, b) => a + b, 0)}
+                </span>
+              )}
+            </div>
             <span className="text-[9px] font-semibold">Pedidos</span>
           </button>
         )}
@@ -438,6 +461,7 @@ export default function Home() {
         open={ordersOpen}
         user={user}
         highlightOrderId={highlightOrderId}
+        unreadByOrder={unreadByOrder}
         onClose={() => setOrdersOpen(false)}
         onReview={handleReview}
       />
